@@ -1,9 +1,9 @@
 import torch
+from functools import partial
 from dgl import DGLGraph
-from dgl.nn.pytorch import (
-    GraphConv as GCN,
-    GATConv as GAT,
-)
+from dgl.nn import GraphConv, GATConv
+
+GCN = partial(GraphConv, allow_zero_in_degree=True)
 
 class Sequential(torch.nn.Module):
     """A simple sequential model.
@@ -36,20 +36,20 @@ class Sequential(torch.nn.Module):
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> import bronx.models
-    >>> import bronx.models.zoo
-    >>> import bronx.models.zoo.dgl
+    >>> from bronx.models.zoo.dgl import Sequential
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
     >>> model = bronx.models.zoo.dgl.Sequential(
     ...     GCN,
-    ...     10,
-    ...     20,
-    ...     30,
-    ...     3,
-    ...     torch.nn.ReLU(),
+    ...     in_features=10,
+    ...     hidden_features=20,
+    ...     out_features=30,
+    ...     depth=3,
+    ...     activation=torch.nn.ReLU(),
     ... )
-    >>> model(g, h)
+    >>> h = model(g, h)
+    >>> h.shape
+    torch.Size([3, 30])
     """
     def __init__(
             self,
@@ -77,6 +77,8 @@ class Sequential(torch.nn.Module):
             g: DGLGraph,
             h: torch.Tensor,
     ):
+        """Forward pass."""
+        g = g.local_var()
         for idx, layer in enumerate(self.layers):
             h = layer(g, h)
             if idx < len(self.layers) - 1:
