@@ -1,5 +1,7 @@
 import abc
 import torch
+from torch.utils.data import Dataset
+from torch.distributions import Distribution
 
 class BronxModel(abc.ABC):
     """Base class for all models in the Bronx framework.
@@ -13,10 +15,11 @@ class BronxModel(abc.ABC):
         Train the model using the given data.
     """
     @abc.abstractmethod
-    def __call__(self, *args, **kwargs) -> torch.distributions.Distribution:
+    def __call__(self, *args, **kwargs) -> Distribution:
         pass
 
     @abc.abstractmethod
-    def train(self, *args, **kwargs) -> None:
+    def train(self, dataset: Dataset) -> None:
         pass
+
 
