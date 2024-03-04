@@ -76,11 +76,12 @@ class Sequential(torch.nn.Module):
             self,
             g: DGLGraph,
             h: torch.Tensor,
+            **kwargs,
     ):
         """Forward pass."""
         g = g.local_var()
         for idx, layer in enumerate(self.layers):
-            h = layer(g, h)
+            h = layer(g, h, **kwargs)
             if idx < len(self.layers) - 1:
                 h = self.activation(h)
         return h
