@@ -3,8 +3,11 @@ from functools import partial
 from dgl import DGLGraph
 from dgl.nn import GraphConv, GATConv
 
-
 class GCN(GraphConv):
+    def __init__(self, *args, **kwargs):
+        kwargs["allow_zero_in_degree"] = True
+        super().__init__(*args, **kwargs)
+
     @property
     def in_features(self):
         return self._in_feats

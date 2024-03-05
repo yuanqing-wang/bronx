@@ -1,25 +1,89 @@
 import torch
 import pyro
 import dgl
-from .edge import EdgeModel
 
 class StructuralLayer(torch.nn.Module):
+    """Layer with structural uncertatinty with VI.
+
+    Parameters
+    ----------
+    layer : torch.nn.Module
+        The layer to use
+
+    prior : torch.nn.Module
+        The prior distribution for the edge features
+
+    guide : torch.nn.Module
+        The guide distribution for the edge features
+
+    in_features : int
+        The number of input features
+
+    out_features : int
+        The number of output features
+
+    edge_features : int
+        The number of edge features
+
+    edge_name : str
+        The name of the edge random variable
+
+    Examples
+    --------
+    >>> import torch
+    >>> import dgl
+    >>> import bronx
+    >>> from bronx.models.structural.layer import StructuralLayer
+    >>> from bronx.models.zoo.dgl import GCN
+    >>> from bronx.models.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
+    >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
+    >>> h = torch.randn(3, 10)
+    >>> layer = StructuralLayer(
+    ...     GCN,
+    ...     EdgeLogitNormalPrior,
+    ...     EdgeLogitNormalGuide,
+    ...     in_features=10,
+    ...     out_features=20,
+    ...     edge_features=1,
+    ...     edge_name="e",
+    ... )
+    >>> h = layer(g, h)
+    >>> h.shape
+    torch.Size([3, 20])
+
+    """
     def __init__(
             self,
             layer: torch.nn.Module,
+            prior: torch.nn.Module,
+            guide: torch.nn.Module,
+            in_features: int,
+            out_features: int,
+            edge_features: int,
+            edge_name: str="e",
     ):
         super().__init__()
-        self.layer = layer
-        self.edge_model = EdgeModel(
-            in_features=layer.in_features,
-            out_features=layer.out_features,
-        )
+        self.layer = layer(in_features, out_features)
+        self.prior = prior(edge_features, name=edge_name)
+        self.guide = guide(in_features, edge_features, name=edge_name)
 
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        with pyro.plate("edges", g.number_of_edges()):
+            e = self.prior(g, h)
+        return self.layer(g, h, edge_weight=e)
+    
     def guide(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        g = g.local_var()
-        e = self.edge_model(g, h)        
-        return e
+        with pyro.plate("edges", g.number_of_edges()):
+            e = self.guide(g, h)
+        return self.layer(g, h, edge_weight=e)
+
+
+    
