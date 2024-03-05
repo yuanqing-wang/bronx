@@ -3,7 +3,15 @@ from functools import partial
 from dgl import DGLGraph
 from dgl.nn import GraphConv, GATConv
 
-GCN = partial(GraphConv, allow_zero_in_degree=True)
+
+class GCN(GraphConv):
+    @property
+    def in_features(self):
+        return self._in_feats
+    
+    @property
+    def out_features(self):
+        return self._out_feats
 
 class Sequential(torch.nn.Module):
     """A simple sequential model.
