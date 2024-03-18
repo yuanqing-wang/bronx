@@ -66,13 +66,14 @@ class StructuralLayer(torch.nn.Module):
         self.layer = layer(in_features, out_features)
         self.prior = prior(edge_features, name=edge_name)
         self.guide = guide(in_features, edge_features, name=edge_name)
+        self.edge_name = edge_name
 
     def forward(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        with pyro.plate("edges", g.number_of_edges()):
+        with pyro.plate("plate_" + self.edge_name, g.number_of_edges()):
             e = self.prior(g, h)
         return self.layer(g, h, edge_weight=e)
     
@@ -81,7 +82,7 @@ class StructuralLayer(torch.nn.Module):
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        with pyro.plate("edges", g.number_of_edges()):
+        with pyro.plate("plate_" + self.edge_name, g.number_of_edges()):
             e = self.guide(g, h)
         return self.layer(g, h, edge_weight=e)
 

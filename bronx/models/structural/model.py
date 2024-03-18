@@ -89,10 +89,12 @@ class StructuralModel(torch.nn.Module):
                 edge_features=edge_features,
                 prior=prior,
                 guide=guide,
+                edge_name=f"e{idx}",
             )
             for idx in range(depth)
         ])
         self.activation = activation
+
         
     def forward(
             self,
@@ -103,6 +105,20 @@ class StructuralModel(torch.nn.Module):
             h = self.proj_in(h)
         for layer in self.layers:
             h = layer(g, h)
+            h = self.activation(h)
+        if hasattr(self, "proj_out"):
+            h = self.proj_out(h)
+        return h
+    
+    def guide(
+            self,
+            g: DGLGraph,
+            h: torch.Tensor,
+    ):
+        if hasattr(self, "proj_in"):
+            h = self.proj_in(h)
+        for layer in self.layers:
+            h = layer.guide(g, h)
             h = self.activation(h)
         if hasattr(self, "proj_out"):
             h = self.proj_out(h)
