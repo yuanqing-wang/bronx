@@ -1,6 +1,7 @@
 import torch
 from .layer import StructuralLayer
 from dgl import DGLGraph
+import lightning
 
 class StructuralModel(torch.nn.Module):
     """A model that characterizes the structural uncertainty of a graph.
@@ -123,3 +124,4 @@ class StructuralModel(torch.nn.Module):
         if hasattr(self, "proj_out"):
             h = self.proj_out(h)
         return h
+    
