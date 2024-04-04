@@ -1,9 +1,10 @@
 import torch
 from .layer import StructuralLayer
+from ..model import BronxLightningWrapper, BronxModel
 from dgl import DGLGraph
 import lightning
 
-class StructuralModel(torch.nn.Module):
+class StructuralModel(BronxModel):
     """A model that characterizes the structural uncertainty of a graph.
 
     Parameters
@@ -124,4 +125,8 @@ class StructuralModel(torch.nn.Module):
         if hasattr(self, "proj_out"):
             h = self.proj_out(h)
         return h
-    
+
+
+class WrappedStructuralModel(BronxLightningWrapper):
+    """ Structural model wrapped in a lightning module."""
+    pass
