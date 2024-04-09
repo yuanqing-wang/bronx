@@ -1,11 +1,12 @@
 from pyexpat import model
 import torch
 from .layer import StructuralLayer
+from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
 from ..model import BronxLightningWrapper, BronxModel
 from dgl import DGLGraph
 import lightning
 
-class StructuralModel(BronxModel):
+class UnwrappedStructuralModel(BronxModel):
     """A model that characterizes the structural uncertainty of a graph.
 
     Parameters
@@ -45,21 +46,16 @@ class StructuralModel(BronxModel):
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> from bronx.models.structural.model import StructuralModel
     >>> from bronx.models.zoo.dgl import GCN
     >>> from bronx.models.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
-    >>> model = StructuralModel(
+    >>> model = UnwrappedStructuralModel(
     ...     layer=GCN,
     ...     in_features=10,
     ...     out_features=20,
     ...     hidden_features=15,
-    ...     edge_features=1,
-    ...     prior=EdgeLogitNormalPrior,
-    ...     guide=EdgeLogitNormalGuide,
     ...     depth=2,
-    ...     activation=torch.nn.ReLU(),
     ... )
     >>> h = model(g, h)
     >>> h.shape
@@ -71,11 +67,11 @@ class StructuralModel(BronxModel):
             in_features: int,
             out_features: int,
             hidden_features: int,
-            edge_features: int,
-            prior: torch.nn.Module,
-            guide: torch.nn.Module,
             depth: int,
-            activation: torch.nn.Module,
+            activation: torch.nn.Module = torch.nn.SiLU(),
+            edge_features: int = 1,
+            prior: torch.nn.Module = EdgeLogitNormalPrior,
+            guide: torch.nn.Module = EdgeLogitNormalGuide,
             proj_in: bool = False,
             proj_out: bool = False,
     ):
@@ -128,39 +124,45 @@ class StructuralModel(BronxModel):
         return h
 
 
-class WrappedStructuralModel(BronxLightningWrapper):
+class StructuralModel(BronxLightningWrapper):
     """ Structural model wrapped in a lightning module.
     
-
     Examples
     --------
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> from bronx.models.structural.model import WrappedStructuralModel
     >>> from bronx.models.zoo.dgl import GCN
     >>> from bronx.models.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
-    >>> model = WrappedStructuralModel(
+    >>> model = StructuralModel(
     ...     layer=GCN,
     ...     in_features=10,
     ...     out_features=20,
     ...     hidden_features=15,
-    ...     edge_features=1,
-    ...     prior=EdgeLogitNormalPrior,
-    ...     guide=EdgeLogitNormalGuide,
     ...     depth=2,
-    ...     activation=torch.nn.ReLU(),
     ... )
     """
     def __init__(self, *args, **kwargs):
-        model = StructuralModel(*args, **kwargs)
+        model = UnwrappedStructuralModel(*args, **kwargs)
         super().__init__(model)
-        from pyro.infer import SVI
+        self.automatic_optimization = False
+        import pyro
+        from pyro.infer import SVI, Trace_ELBO
+        optimizer = pyro.optim.Adam({"lr": 0.01})
         self.svi = SVI(
             model=model,
             guide=model.guide,
-            optim=torch.optim.Adam,
+            optim=optimizer,
+            loss=Trace_ELBO(),
         )
+
+    def training_step(self, batch, batch_idx):
+        """Training step for the model."""
+        g, h, y = batch
+        loss = self.svi.step(g, h, y=y)
+        return loss
+
+    
 

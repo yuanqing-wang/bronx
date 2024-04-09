@@ -27,7 +27,5 @@ class BronxLightningWrapper(pl.LightningModule):
         loss = self.model.loss(*batch)
         return loss
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters())
 
 
