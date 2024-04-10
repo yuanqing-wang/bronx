@@ -1,5 +1,7 @@
-from pyexpat import model
+from typing import Optional
 import torch
+import pyro
+import dgl
 from .layer import StructuralLayer
 from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
 from ..model import BronxLightningWrapper, BronxModel
@@ -134,6 +136,7 @@ class StructuralModel(BronxLightningWrapper):
     >>> import bronx
     >>> from bronx.models.zoo.dgl import GCN
     >>> from bronx.models.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
+    >>> from bronx.models.head.node_classification import NodeClassificationPyroHead
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
     >>> model = StructuralModel(
@@ -142,26 +145,51 @@ class StructuralModel(BronxLightningWrapper):
     ...     out_features=20,
     ...     hidden_features=15,
     ...     depth=2,
+    ...     head=NodeClassificationPyroHead(),
     ... )
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, 
+            head: torch.nn.Module,
+            optimizer: pyro.optim.PyroOptim = pyro.optim.Adam({"lr": 0.01}),
+            loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
+            *args, 
+            **kwargs
+        ):
         model = UnwrappedStructuralModel(*args, **kwargs)
         super().__init__(model)
         self.automatic_optimization = False
-        import pyro
-        from pyro.infer import SVI, Trace_ELBO
-        optimizer = pyro.optim.Adam({"lr": 0.01})
-        self.svi = SVI(
-            model=model,
-            guide=model.guide,
+        self.head = head
+        self.svi = pyro.infer.SVI(
+            model=self.forward,
+            guide=self.guide,
             optim=optimizer,
-            loss=Trace_ELBO(),
+            loss=loss,
         )
+
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+            y: Optional[torch.Tensor],
+    ):
+        """Forward pass for the model."""
+        h = self.model(g, h)
+        return self.head(g, h, y=y)
+    
+    def guide(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+            y: Optional[torch.Tensor],
+    ):
+        """Guide pass for the model."""
+        h = self.model.guide(g, h)
+        return h
 
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
-        g, h, y = batch
-        loss = self.svi.step(g, h, y=y)
+        loss = self.svi.step(*batch)
         return loss
 
     

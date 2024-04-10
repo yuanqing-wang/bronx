@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import pyro
 import dgl
@@ -7,6 +8,11 @@ class NodeClassificationPyroHead(torch.nn.Module):
             self, 
             g: dgl.DGLGraph, 
             h: torch.Tensor,
+            y: Optional[torch.Tensor] = None,
         ):
-        with pyro.plate("nodes", g.number_of_nodes()):
-            return pyro.sample("y", pyro.distributions.Bernoulli(logits=h))
+        with pyro.plate("obs_nodes", g.number_of_nodes()):
+            return pyro.sample(
+                "y", 
+                pyro.distributions.Categorical(logits=h),
+                obs=y,
+            )
