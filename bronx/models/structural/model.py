@@ -126,7 +126,7 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
         return h
 
 
-class StructuralModel(BronxLightningWrapper, BronxPyroMixin):
+class StructuralModel(BronxPyroMixin, BronxLightningWrapper):
     """ Structural model wrapped in a lightning module.
     
     Examples
@@ -166,6 +166,9 @@ class StructuralModel(BronxLightningWrapper, BronxPyroMixin):
             optim=optimizer,
             loss=loss,
         )
+
+    def configure_optimizers(self):
+        return None
 
 
 

@@ -1,5 +1,7 @@
 import abc
+from typing import Optional
 import torch
+import dgl
 from torch.utils.data import Dataset
 from torch.distributions import Distribution
 import lightning as pl
@@ -30,17 +32,19 @@ class BronxPyroMixin(object):
             g: dgl.DGLGraph,
             h: torch.Tensor,
             y: Optional[torch.Tensor],
+            *args,
             **kwargs,
     ):
         """Forward pass for the model."""
         h = self.model(g, h)
-        return self.head(g, h, y=y, **kwargs)
+        return self.head(g, h, y, *args, **kwargs)
     
     def guide(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
             y: Optional[torch.Tensor],
+            *args,
             **kwargs,
     ):
         """Guide pass for the model."""

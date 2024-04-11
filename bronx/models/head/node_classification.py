@@ -19,6 +19,6 @@ class NodeClassificationPyroHead(torch.nn.Module):
         with pyro.plate("obs_nodes", number_of_nodes):
             return pyro.sample(
                 "y", 
-                pyro.distributions.Categorical(logits=h[:, mask, ...]),
-                obs=y[:, mask, ...],
+                pyro.distributions.Categorical(logits=h[..., mask, :]),
+                obs=y[..., mask],
             )
