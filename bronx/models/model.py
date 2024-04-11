@@ -2,6 +2,7 @@ import abc
 from typing import Optional
 import torch
 import dgl
+import pyro
 from torch.utils.data import Dataset
 from torch.distributions import Distribution
 import lightning as pl
@@ -54,7 +55,25 @@ class BronxPyroMixin(object):
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
         loss = self.svi.step(*batch)
-        return loss
+        self.log("train/loss", loss)
+        return None
+    
+    def validation_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        g, h, y, mask = batch
+        predictive = pyro.infer.Predictive(
+            self.svi.model,
+            guide=self.svi.guide,
+            num_samples=1,
+            parallel=False,
+            return_sites=["_RETURN"],
+        )
+
+        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"].mean(0)[mask]
+        y = y[mask]
+        accuracy = (y_hat.argmax(-1) == y).float().mean()
+        self.log("val/accuracy", accuracy)
+        return accuracy
 
 
 

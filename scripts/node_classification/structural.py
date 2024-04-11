@@ -3,38 +3,28 @@ import dgl
 import lightning as pl
 
 def run(args):
-    from dgl.data import (
-        CoraGraphDataset,
-        CiteseerGraphDataset,
-        PubmedGraphDataset,
-        CoauthorCSDataset,
-        CoauthorPhysicsDataset,
-        AmazonCoBuyComputerDataset,
-        AmazonCoBuyPhotoDataset,
-        CornellDataset,
-        TexasDataset,
-        FlickrDataset,
-    )
-
-    g = locals()[args.data](verbose=False)[0]
-    g = dgl.remove_self_loop(g)
-    g = dgl.to_bidirected(g, copy_ndata=True)
-
+    from bronx.data import node_classification
+    data = getattr(node_classification, args.data)()
     from bronx.models.zoo.dgl import GCN
     from bronx.models.structural.model import StructuralModel
     from bronx.models.head.node_classification import NodeClassificationPyroHead
-    from bronx.models.structural.model import StructuralModel
     model = StructuralModel(
         head=NodeClassificationPyroHead(),
         layer=GCN,
-        in_features=g.ndata["feat"].shape[-1],
-        out_features=g.ndata["label"].max().item() + 1,
+        in_features=data.in_features,
+        out_features=data.num_classes,
         hidden_features=args.hidden_features,
         depth=1,
     )
-    batch = [[g], [g.ndata["feat"]], [g.ndata["label"]], [g.ndata["train_mask"]]]
-    trainer = pl.Trainer(max_epochs=100)
-    trainer.fit(model, batch)
+
+    from lightning.pytorch.loggers import CSVLogger
+    trainer = pl.Trainer(
+        max_epochs=100, 
+        accelerator="cpu",
+        logger=CSVLogger("logs", name="structural"),
+        # check_val_every_n_epoch=1,
+    )
+    trainer.fit(model, data)
 
 
 if __name__ == "__main__":
