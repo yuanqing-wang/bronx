@@ -8,7 +8,7 @@ from ..model import BronxLightningWrapper, BronxModel
 from dgl import DGLGraph
 import lightning
 
-class UnwrappedStructuralModel(BronxModel):
+class UnwrappedStructuralModel(pyro.nn.PyroModule):
     """A model that characterizes the structural uncertainty of a graph.
 
     Parameters
@@ -111,6 +111,7 @@ class UnwrappedStructuralModel(BronxModel):
             h = self.proj_out(h)
         return h
     
+    @pyro.nn.pyro_method
     def guide(
             self,
             g: DGLGraph,
@@ -161,8 +162,8 @@ class StructuralModel(BronxLightningWrapper):
         self.automatic_optimization = False
         self.head = head
         self.svi = pyro.infer.SVI(
-            model=self.forward,
-            guide=self.guide,
+            self.forward,
+            self.guide,
             optim=optimizer,
             loss=loss,
         )

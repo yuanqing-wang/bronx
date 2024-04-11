@@ -15,7 +15,9 @@ def test_whole_graph():
         in_features=10,
         out_features=3,
         hidden_features=15,
-        depth=2,
+        depth=1,
     )
+    print(model)
+
     model.training_step((g, h, y), 0)
 
