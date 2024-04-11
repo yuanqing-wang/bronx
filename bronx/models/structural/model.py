@@ -111,7 +111,6 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
             h = self.proj_out(h)
         return h
     
-    @pyro.nn.pyro_method
     def guide(
             self,
             g: DGLGraph,
@@ -173,16 +172,18 @@ class StructuralModel(BronxLightningWrapper):
             g: dgl.DGLGraph,
             h: torch.Tensor,
             y: Optional[torch.Tensor],
+            **kwargs,
     ):
         """Forward pass for the model."""
         h = self.model(g, h)
-        return self.head(g, h, y=y)
+        return self.head(g, h, y=y, **kwargs)
     
     def guide(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
             y: Optional[torch.Tensor],
+            **kwargs,
     ):
         """Guide pass for the model."""
         h = self.model.guide(g, h)
