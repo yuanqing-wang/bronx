@@ -4,7 +4,7 @@ import pyro
 import dgl
 from .layer import StructuralLayer
 from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
-from ..model import BronxLightningWrapper, BronxModel
+from ..model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 from dgl import DGLGraph
 import lightning
 
@@ -126,7 +126,7 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
         return h
 
 
-class StructuralModel(BronxLightningWrapper):
+class StructuralModel(BronxLightningWrapper, BronxPyroMixin):
     """ Structural model wrapped in a lightning module.
     
     Examples
@@ -167,32 +167,7 @@ class StructuralModel(BronxLightningWrapper):
             loss=loss,
         )
 
-    def forward(
-            self,
-            g: dgl.DGLGraph,
-            h: torch.Tensor,
-            y: Optional[torch.Tensor],
-            **kwargs,
-    ):
-        """Forward pass for the model."""
-        h = self.model(g, h)
-        return self.head(g, h, y=y, **kwargs)
-    
-    def guide(
-            self,
-            g: dgl.DGLGraph,
-            h: torch.Tensor,
-            y: Optional[torch.Tensor],
-            **kwargs,
-    ):
-        """Guide pass for the model."""
-        h = self.model.guide(g, h)
-        return h
 
-    def training_step(self, batch, batch_idx):
-        """Training step for the model."""
-        loss = self.svi.step(*batch)
-        return loss
 
     
 

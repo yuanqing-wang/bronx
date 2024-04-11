@@ -23,8 +23,33 @@ class BronxLightningWrapper(pl.LightningModule):
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
 
+class BronxPyroMixin(object):
+    """Base class for Pyro models in the Bronx framework."""
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+            y: Optional[torch.Tensor],
+            **kwargs,
+    ):
+        """Forward pass for the model."""
+        h = self.model(g, h)
+        return self.head(g, h, y=y, **kwargs)
+    
+    def guide(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+            y: Optional[torch.Tensor],
+            **kwargs,
+    ):
+        """Guide pass for the model."""
+        h = self.model.guide(g, h)
+        return h
+
     def training_step(self, batch, batch_idx):
-        loss = self.model.loss(*batch)
+        """Training step for the model."""
+        loss = self.svi.step(*batch)
         return loss
 
 
