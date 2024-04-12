@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import pyro
 import dgl
@@ -54,16 +55,19 @@ class StructuralLayer(torch.nn.Module):
     """
     def __init__(
             self,
-            layer: torch.nn.Module,
+            layer: Optional[torch.nn.Module],
             prior: torch.nn.Module,
             guide: torch.nn.Module,
             in_features: int,
-            out_features: int,
-            edge_features: int,
+            out_features: Optional[int]=None,
+            edge_features: int=1,
             edge_name: str="e",
     ):
         super().__init__()
-        self.layer = layer(in_features, out_features)
+        if layer is not None:
+            self.layer = layer(in_features, out_features)
+        else:
+            self.layer = None
         self.prior = prior(edge_features, name=edge_name)
         self._guide = guide(in_features, edge_features, name=edge_name)
         self.edge_name = edge_name
@@ -75,7 +79,10 @@ class StructuralLayer(torch.nn.Module):
     ):
         with pyro.plate("plate_" + self.edge_name, g.number_of_edges()):
             e = self.prior(g, h)
-        return self.layer(g, h, edge_weight=e)
+        if self.layer is not None:
+            return self.layer(g, h, edge_weight=e)
+        else:
+            return e
     
     def guide(
             self,
@@ -84,7 +91,10 @@ class StructuralLayer(torch.nn.Module):
     ):
         with pyro.plate("plate_" + self.edge_name, g.number_of_edges()):
             e = self._guide(g, h)
-        return self.layer(g, h, edge_weight=e)
+        if self.layer is not None:
+            return self.layer(g, h, edge_weight=e)
+        else:
+            return e
 
 
     
