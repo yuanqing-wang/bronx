@@ -14,16 +14,22 @@ class NodeClassificationPyroHead(torch.nn.Module):
         if mask is not None:
             number_of_nodes = mask.sum()
             h = h[..., mask, :]
-            y = y[..., mask]
+            if y is not None:
+                y = y[..., mask]
         else:
             number_of_nodes = g.number_of_nodes()
 
+        # compute the scale
+        scale = g.number_of_edges() / number_of_nodes
+
+        # sample the logits
         if y is not None:
-            with pyro.plate("obs_nodes", number_of_nodes):
-                return pyro.sample(
-                    "y", 
-                    pyro.distributions.Categorical(logits=h),
-                    obs=y,
-                )
+            with pyro.poutine.scale(None, scale=scale):
+                with pyro.plate("obs_nodes", number_of_nodes):
+                    return pyro.sample(
+                        "y", 
+                        pyro.distributions.Categorical(logits=h),
+                        obs=y,
+                    )
         else:
             return h

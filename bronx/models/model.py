@@ -55,7 +55,11 @@ class BronxPyroMixin(object):
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
         loss = self.svi.step(*batch)
-        self.log("train/loss", loss)
+
+        # NOTE: `self.optimizers` here is None
+        # but this is to trick the lightning module
+        # to count steps
+        self.optimizers().step()
         return None
     
     def validation_step(self, batch, batch_idx):
@@ -74,6 +78,24 @@ class BronxPyroMixin(object):
         accuracy = (y_hat.argmax(-1) == y).float().mean()
         self.log("val/accuracy", accuracy)
         return accuracy
+    
+    def test_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        g, h, y, mask = batch
+        predictive = pyro.infer.Predictive(
+            self.svi.model,
+            guide=self.svi.guide,
+            num_samples=1,
+            parallel=False,
+            return_sites=["_RETURN"],
+        )
+
+        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"].mean(0)[mask]
+        y = y[mask]
+        accuracy = (y_hat.argmax(-1) == y).float().mean()
+        self.log("test/accuracy", accuracy)
+        return accuracy
+
 
 
 

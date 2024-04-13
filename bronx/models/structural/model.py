@@ -5,6 +5,7 @@ import dgl
 from .layer import StructuralLayer
 from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
 from ..model import BronxLightningWrapper, BronxModel, BronxPyroMixin
+from ..head import node_classification as node_classification_head
 from ..zoo.dgl import Sequential
 from dgl import DGLGraph
 import lightning
@@ -248,8 +249,6 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
             h = self.proj_out(h)
         return h
 
-
-
 class StructuralModel(BronxPyroMixin, BronxLightningWrapper):
     """ Structural model wrapped in a lightning module.
     
@@ -269,21 +268,32 @@ class StructuralModel(BronxPyroMixin, BronxLightningWrapper):
     ...     out_features=20,
     ...     hidden_features=15,
     ...     depth=2,
-    ...     head=NodeClassificationPyroHead(),
+    ...     head=NodeClassificationPyroHead,
     ... )
     """
     def __init__(
             self, 
-            head: torch.nn.Module,
-            optimizer: pyro.optim.PyroOptim = pyro.optim.Adam({"lr": 0.01}),
+            head: str,
+            optimizer: str = "Adam",
+            lr: float = 1e-2,
+            weight_decay: float = 1e-3,
             loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
             *args, 
             **kwargs
         ):
         model = UnwrappedStructuralModel(*args, **kwargs)
         super().__init__(model)
+
+        # initialize head
+        self.head = head()
         self.automatic_optimization = False
-        self.head = head
+        self.save_hyperparameters()
+
+        # initialize optimizer
+        optimizer = getattr(pyro.optim, optimizer)(
+            {"lr": lr, "weight_decay": weight_decay},
+        )
+
         self.svi = pyro.infer.SVI(
             self.forward,
             self.guide,
@@ -293,8 +303,4 @@ class StructuralModel(BronxPyroMixin, BronxLightningWrapper):
 
     def configure_optimizers(self):
         return None
-
-
-
     
-

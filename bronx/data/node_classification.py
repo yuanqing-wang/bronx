@@ -32,6 +32,16 @@ class SingleDataloader(object):
             raise StopIteration
         self.touched = True
         return self.data
+    
+def collate_fn(batch, mask_name="train_mask"):
+    assert len(batch) == 1
+    g = batch[0]
+    return (
+        g,
+        g.ndata["feat"],
+        g.ndata["label"],
+        g.ndata[mask_name],
+    )
 
 class NodeClassificationDataModule(pl.LightningDataModule):
     def __init__(self, data):
@@ -41,20 +51,25 @@ class NodeClassificationDataModule(pl.LightningDataModule):
         self.num_classes = self.g.ndata["label"].max().item() + 1
         
     def train_dataloader(self):
-        return SingleDataloader([
-            self.g,
-            self.g.ndata["feat"],
-            self.g.ndata["label"],
-            self.g.ndata["train_mask"],
-        ])
+        return dgl.dataloading.GraphDataLoader(
+            dataset=[self.g],
+            batch_size=1,
+            collate_fn=partial(collate_fn, mask_name="train_mask"),
+        )
     
     def val_dataloader(self):
-        return SingleDataloader([
-            self.g,
-            self.g.ndata["feat"],
-            self.g.ndata["label"],
-            self.g.ndata["val_mask"],
-        ])
+        return dgl.dataloading.GraphDataLoader(
+            dataset=[self.g],
+            batch_size=1,
+            collate_fn=partial(collate_fn, mask_name="val_mask"),
+        )
+    
+    def test_dataloader(self):
+        return dgl.dataloading.GraphDataLoader(
+            dataset=[self.g],
+            batch_size=1,
+            collate_fn=partial(collate_fn, mask_name="test_mask"),
+        )
 
 for data in _ALL:
     locals()[data] = partial(
