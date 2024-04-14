@@ -3,6 +3,7 @@ import pyro
 from .utils import init_log_sigma
 from ..model import BronxModel
 from ...zoo.dgl import Sequential
+from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 
 class UnwrappedParametricModel(pyro.nn.PyroModule):
     """ A model that characterizes the parametric uncertainty of a graph.
@@ -58,4 +59,38 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             in_features=in_features,
             out_features=out_features,
             hidden_features=hidden_features,
+        )
+
+class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
+    def __init__(
+            self, 
+            autoguide: pyro.infer.autoguide.guides.AutoGuide,
+            head: str,
+            optimizer: str = "Adam",
+            lr: float = 1e-2,
+            weight_decay: float = 1e-3,
+            loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
+            *args, 
+            **kwargs,
+    ):
+        model = UnwrappedParametricModel(*args, **kwargs)
+        super().__init__(model)
+
+        guide = autoguide(model)
+
+        # initialize head
+        self.head = head()
+        self.automatic_optimization = False
+        self.save_hyperparameters()
+
+        # initialize optimizer
+        optimizer = getattr(pyro.optim, optimizer)(
+            {"lr": lr, "weight_decay": weight_decay},
+        )
+
+        self.svi = pyro.infer.SVI(
+            self.forward,
+            self.guide,
+            optim=optimizer,
+            loss=loss,
         )
