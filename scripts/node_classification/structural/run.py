@@ -10,7 +10,7 @@ def run(args):
     from bronx.data import node_classification
     data = getattr(node_classification, args.data)()
     from bronx.models.zoo.dgl import GCN
-    from bronx.models.structural.model import StructuralModel
+    from bronx.models.strategy.structural.model import StructuralModel
     from bronx.models.head.node_classification import NodeClassificationPyroHead
     model = StructuralModel(
         head=NodeClassificationPyroHead,

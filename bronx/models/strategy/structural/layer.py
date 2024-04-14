@@ -34,9 +34,9 @@ class StructuralLayer(torch.nn.Module):
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> from bronx.models.structural.layer import StructuralLayer
+    >>> from bronx.models.strategy.structural.layer import StructuralLayer
     >>> from bronx.models.zoo.dgl import GCN
-    >>> from bronx.models.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
+    >>> from bronx.models.strategy.structural.edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
     >>> layer = StructuralLayer(

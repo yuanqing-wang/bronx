@@ -70,7 +70,7 @@ class EdgeLogitNormalPrior(torch.nn.Module):
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> from bronx.models.structural.edge import EdgeLogitNormalPrior
+    >>> from bronx.models.strategy.structural.edge import EdgeLogitNormalPrior
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
     >>> model = EdgeLogitNormalPrior(20, "e")
@@ -126,7 +126,7 @@ class EdgeLogitNormalGuide(torch.nn.Module):
     >>> import torch
     >>> import dgl
     >>> import bronx
-    >>> from bronx.models.structural.edge import EdgeLogitNormalGuide
+    >>> from bronx.models.strategy.structural.edge import EdgeLogitNormalGuide
     >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     >>> h = torch.randn(3, 10)
     >>> model = EdgeLogitNormalGuide(10, 20, 1.0, name="e")

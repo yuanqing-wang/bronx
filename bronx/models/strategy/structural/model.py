@@ -4,9 +4,9 @@ import pyro
 import dgl
 from .layer import StructuralLayer
 from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
-from ..model import BronxLightningWrapper, BronxModel, BronxPyroMixin
-from ..head import node_classification as node_classification_head
-from ..zoo.dgl import Sequential
+from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
+from ...head import node_classification as node_classification_head
+from ...zoo.dgl import Sequential
 from dgl import DGLGraph
 import lightning
 
