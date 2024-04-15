@@ -32,7 +32,7 @@ def init_sigma(model, value):
             pyro.distributions.Normal(
                 torch.zeros(param.shape),
                 torch.ones(param.shape) * value,
-            )
+            ).to_event(param.dim())
         )
         for name, param in model.named_parameters()
     }

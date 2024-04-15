@@ -36,7 +36,7 @@ def run(args):
 
     trainer = pl.Trainer(
         callbacks=[checkpoint_callback, _TuneReportCallback()],
-        max_epochs=10, 
+        max_epochs=100, 
         accelerator="cpu",
         logger=CSVLogger("logs", name="structural"),
     )

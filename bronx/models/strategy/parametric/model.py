@@ -1,5 +1,6 @@
 import torch
 import pyro
+import dgl
 from .utils import init_sigma, to_pyro_module_
 from ...zoo.dgl import Sequential
 from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
@@ -60,6 +61,17 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             hidden_features=hidden_features,
         )
 
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        if hasattr(self, "proj_in"):
+            h = self.proj_in(h)
+        h = self.layers(g, h)
+        if hasattr(self, "proj_out"):
+            h = self.proj_out(h)
+        return h
 
 class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
     def __init__(
