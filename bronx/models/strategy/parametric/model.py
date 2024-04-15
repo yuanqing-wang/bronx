@@ -1,7 +1,6 @@
 import torch
 import pyro
-from .utils import init_log_sigma
-from ..model import BronxModel
+from .utils import init_sigma, to_pyro_module_
 from ...zoo.dgl import Sequential
 from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 
@@ -61,11 +60,13 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             hidden_features=hidden_features,
         )
 
+
 class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
     def __init__(
             self, 
             autoguide: pyro.infer.autoguide.guides.AutoGuide,
             head: str,
+            sigma: float = 1.0,
             optimizer: str = "Adam",
             lr: float = 1e-2,
             weight_decay: float = 1e-3,
@@ -74,9 +75,11 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
             **kwargs,
     ):
         model = UnwrappedParametricModel(*args, **kwargs)
+        to_pyro_module_(model)
+        init_sigma(model, sigma)
         super().__init__(model)
 
-        guide = autoguide(model)
+        self.model.guide = autoguide(model)
 
         # initialize head
         self.head = head()
@@ -94,3 +97,6 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
             optim=optimizer,
             loss=loss,
         )
+
+    def configure_optimizers(self):
+        return None
