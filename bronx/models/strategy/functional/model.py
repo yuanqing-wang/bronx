@@ -119,6 +119,7 @@ class FunctionalModel(pl.LightningModule):
     Examples
     --------
     >>> from bronx.models.zoo.dgl import GCN
+    >>> from bronx.models.head.node_classification import NodeClassificationGPytorchHead
     >>> model = FunctionalModel(
     ...     layer=GCN,
     ...     in_features=10,
@@ -136,30 +137,30 @@ class FunctionalModel(pl.LightningModule):
     """
     def __init__(
             self,
-            layer: torch.nn.Module,
-            in_features: int,
-            out_features: int,
-            hidden_features: int,
-            depth: int,
-            activation: torch.nn.Module = torch.nn.Identity(),
-            proj_in: bool = False,
-            proj_out: bool = False,
+            head: torch.nn.Module,
+            lr: float = 1e-3,
+            weight_decay: float = 1e-5,
+            *args, **kwargs,
     ):
         super().__init__()
-        self.model = UnwrappedFunctionalModel(
-            layer=layer,
-            in_features=in_features,
-            out_features=out_features,
-            hidden_features=hidden_features,
-            depth=depth,
-            activation=activation,
-            proj_in=proj_in,
-            proj_out=proj_out,
-        )
+        self.model = UnwrappedFunctionalModel(*args, **kwargs)
+        self.head = head
 
     def forward(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
+            *args,
+            **kwargs,
     ):
-        return self.model(g, h)
+        """Forward pass for the model."""
+        h = self.model(g, h)
+        return self.head(h, *args, **kwargs)
+    
+    def configure_optimizers(self):
+        """Configure the optimizer for the model."""
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay,
+        )
