@@ -73,7 +73,7 @@ class GraphGPLayer(gpytorch.Module):
     >>> g = dgl.rand_graph(5, 20)
     >>> h = torch.rand(5, 10)
     >>> h = layer(g, h)
-    >>> h.shape()
+    >>> h.shape
     torch.Size([5, 20])
     """
     def __init__(
@@ -102,7 +102,7 @@ class GraphGPLayer(gpytorch.Module):
     ):
         h = self.layer(g, h).tanh()
         h = h.transpose(-1, -2).unsqueeze(-1)
-        h = self.gp_layer(h)
+        h = self.gp_layer(h).rsample()
         return h
 
 

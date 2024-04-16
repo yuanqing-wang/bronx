@@ -2,6 +2,7 @@ from typing import Optional
 import torch
 import pyro
 import dgl
+import gpytorch
 
 class NodeClassificationPyroHead(torch.nn.Module):
     def forward(
@@ -33,3 +34,43 @@ class NodeClassificationPyroHead(torch.nn.Module):
                     )
         else:
             return h
+        
+
+class NodeClassificationGPytorchHead(gpytorch.Module):
+    def __init__(
+            self, 
+            num_features: int,
+            gp: gpytorch.models.VariationalGP,
+            num_data: int,
+        ):
+        super().__init__()
+        self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
+            num_features=num_features,
+            mixing_weights=False,
+        )
+
+        self.mll = gpytorch.mlls.VariationalELBO(
+            likelihood=self.likelihood,
+            model=gp,
+            num_data=num_data,
+        )
+
+    def forward(
+            self,
+            h: torch.Tensor,
+            mask: Optional[torch.Tensor] = None,
+        ):
+        if mask is not None:
+            h = h[..., mask, :]
+        return self.likelihood(h)
+    
+    def loss(
+            self,
+            h: torch.Tensor,
+            y: torch.Tensor,
+            mask: Optional[torch.Tensor] = None,
+    ):
+        if mask is not None:
+            h = h[..., mask, :]
+        loss = -self.mll(h, y)
+        return loss      
