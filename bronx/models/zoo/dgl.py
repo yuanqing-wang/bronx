@@ -1,9 +1,22 @@
 import torch
 from functools import partial
 from dgl import DGLGraph
-from dgl.nn import GraphConv, GATConv
 
+from dgl.nn import GraphConv
 class GCN(GraphConv):
+    """Graph Convolutional Networks. https://arxiv.org/abs/1609.02907
+
+    Examples
+    --------
+    >>> import torch
+    >>> import dgl
+    >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
+    >>> h = torch.randn(3, 10)
+    >>> model = GCN(10, 20)
+    >>> h = model(g, h)
+    >>> h.shape
+    torch.Size([3, 20])
+    """
     def __init__(self, *args, **kwargs):
         kwargs["allow_zero_in_degree"] = True
         super().__init__(*args, **kwargs)
@@ -15,6 +28,63 @@ class GCN(GraphConv):
     @property
     def out_features(self):
         return self._out_feats
+    
+from dgl.nn import SGConv
+class SGC(SGConv):
+    """Simplifying Graph Convolutional Networks. https://arxiv.org/abs/1902.07153
+
+    Examples
+    --------
+    >>> import torch
+    >>> import dgl
+    >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
+    >>> h = torch.randn(3, 10)
+    >>> model = SGC(10, 20)
+    >>> h = model(g, h)
+    >>> h.shape
+    torch.Size([3, 20])
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs["allow_zero_in_degree"] = True
+        super().__init__(*args, **kwargs)
+
+    @property
+    def in_features(self):
+        return self._in_feats
+    
+    @property
+    def out_features(self):
+        return self._out_feats
+    
+from dgl.nn import GINConv
+class GIN(GINConv):
+    """Graph Isomorphism Networks. https://arxiv.org/abs/1810.00826
+
+    Examples
+    --------
+    >>> import torch
+    >>> import dgl
+    >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
+    >>> h = torch.randn(3, 10)
+    >>> model = GIN(10, 20)
+    >>> h = model(g, h)
+    >>> h.shape
+    torch.Size([3, 20])
+    """
+    def __init__(self, in_feats, out_feats):
+        lin = torch.nn.Linear(in_feats, out_feats)
+        super().__init__(apply_func=lin, aggregator_type='sum')
+        self._in_feats = in_feats
+        self._out_feats = out_feats
+
+    @property
+    def in_features(self):
+        return self._in_feats
+    
+    @property
+    def out_features(self):
+        return self._out_feats
+
 
 class Sequential(torch.nn.Module):
     """A simple sequential model.
