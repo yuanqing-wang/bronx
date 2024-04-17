@@ -39,14 +39,16 @@ class NodeClassificationPyroHead(torch.nn.Module):
 class NodeClassificationGPytorchHead(gpytorch.Module):
     def __init__(
             self, 
-            num_features: int,
+            in_features: int,
+            out_features: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
         ):
         super().__init__()
         self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
-            num_features=num_features,
-            mixing_weights=False,
+            num_features=in_features,
+            num_classes=out_features,
+            mixing_weights=True,
         )
 
         self.mll = gpytorch.mlls.VariationalELBO(
@@ -58,19 +60,13 @@ class NodeClassificationGPytorchHead(gpytorch.Module):
     def forward(
             self,
             h: torch.Tensor,
-            mask: Optional[torch.Tensor] = None,
         ):
-        if mask is not None:
-            h = h[..., mask, :]
         return self.likelihood(h)
     
     def loss(
             self,
             h: torch.Tensor,
             y: torch.Tensor,
-            mask: Optional[torch.Tensor] = None,
     ):
-        if mask is not None:
-            h = h[..., mask, :]
         loss = -self.mll(h, y)
         return loss      

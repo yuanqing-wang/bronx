@@ -29,6 +29,7 @@ class GPLayer(gpytorch.models.ApproximateGP):
 
         self.covar_module = gpytorch.kernels.ScaleKernel(
                 gpytorch.kernels.RBFKernel(
+                    ard_num_dims=num_dim,
             ),
         )
 
@@ -101,7 +102,6 @@ class GraphGPLayer(gpytorch.Module):
             h: torch.Tensor,
     ):
         h = self.layer(g, h).tanh()
-        h = h.transpose(-1, -2).unsqueeze(-1)
         h = self.gp_layer(h).rsample()
         return h
 
