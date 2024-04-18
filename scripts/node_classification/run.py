@@ -9,17 +9,19 @@ class _TuneReportCallback(TuneReportCallback, pl.Callback):
 def run(args):
     from bronx.data import node_classification
     data = getattr(node_classification, args.data)()
-    from bronx.models.zoo.dgl import GCN
-    from bronx.models.strategy.structural.model import StructuralModel
+    import bronx.models.zoo.dgl as zoo
+    from bronx.models import strategy
     from bronx.models.head.node_classification import NodeClassificationPyroHead
-    model = StructuralModel(
-        head=NodeClassificationPyroHead,
-        layer=GCN,
+    from bronx.models.head import node_classification as heads
+    model = getattr(strategy, args.strategy)(
+        head=getattr(heads, args.head),
+        layer=getattr(zoo, args.layer),
         in_features=data.in_features,
         out_features=data.num_classes,
         hidden_features=args.hidden_features,
         depth=args.depth,
     )
+
 
     from lightning.pytorch.loggers import CSVLogger
     from lightning.pytorch.callbacks import ModelCheckpoint
@@ -36,7 +38,7 @@ def run(args):
 
     trainer = pl.Trainer(
         callbacks=[checkpoint_callback, _TuneReportCallback()],
-        max_epochs=100, 
+        max_epochs=args.num_epochs, 
         accelerator="cpu",
         logger=CSVLogger("logs", name="structural"),
     )
@@ -49,10 +51,28 @@ def run(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+
+    # arguments shared by all programs
+    parser.add_argument("--num_epochs", type=int, default=100)
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument("--hidden_features", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--data", type=str, default="CoraGraphDataset")
+    parser.add_argument("--layer", type=str, default="GCN")
+
+    # strategy-specific arguments
+    subparsers = parser.add_subparsers(dest="strategy")
+    structural = subparsers.add_parser("StructuralModel")
+    structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
+    functional = subparsers.add_parser("FunctionalModel")
+    functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
+
+    parametric = subparsers.add_parser("ParametricModel")
+    parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
+    # parse arguments    
     args = parser.parse_args()
+    print(args)
     run(args)
