@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace
 import numpy as np
 import torch
@@ -8,16 +9,15 @@ from ray.train import RunConfig, ScalingConfig, CheckpointConfig
 from ray.tune.search.optuna import OptunaSearch
 
 CONFIG = {
-    "depth": tune.randint(1, 3),
-    "hidden_features": tune.randint(32, 128),
+    "depth": tune.randint(2, 4),
+    "hidden_features": tune.lograndint(32, 128),
     "lr": tune.loguniform(1e-4, 1e-1),
     "weight_decay": tune.loguniform(1e-6, 1e-2),
 }
 
 def train(config):
     from run import run
-    config["data"] = args.data
-    config["num_epochs"] = args.num_epochs
+    config.update(args.__dict__)
     config = SimpleNamespace(**config)
     run(config)
 
@@ -43,9 +43,9 @@ def run(args):
                 scheduler=scheduler,
                 search_alg=OptunaSearch(),
             ),
-            # run_config=RunConfig(
-            #     storage_path=os.path.join(os.getcwd(), "ray_results"),
-            # ),
+            run_config=RunConfig(
+                    storage_path=os.path.join(os.getcwd(), str(args.__dict__)),
+            ),
     )
 
     # execute the search
@@ -59,6 +59,16 @@ if __name__ == "__main__":
     parser.add_argument("--grace_period", type=int, default=10)
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--num_samples", type=int, default=10)
+    parser.add_argument("--layer", type=str, default="GCN")
+
+    # strategy-specific arguments
+    subparsers = parser.add_subparsers(dest="strategy")
+
+    # structural
+    structural = subparsers.add_parser("structural")
+    structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
+    # parse args
     args = parser.parse_args()
     run(args)
 

@@ -45,6 +45,7 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             activation: torch.nn.Module = torch.nn.SiLU(),
             proj_in: bool = False,
             proj_out: bool = False,
+            *args, **kwargs,
     ):
         super().__init__()
         if proj_in:

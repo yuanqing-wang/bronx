@@ -78,6 +78,7 @@ class UnwrappedResampleStructuralModel(pyro.nn.PyroModule):
             guide: torch.nn.Module = EdgeLogitNormalGuide,
             proj_in: bool = False,
             proj_out: bool = False,
+            *args, **kwargs,
     ):
         super().__init__()
         if proj_in:
@@ -195,6 +196,7 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
             guide: torch.nn.Module = EdgeLogitNormalGuide,
             proj_in: bool = False,
             proj_out: bool = False,
+            *args, **kwargs,
     ):
         super().__init__()
         if proj_in:

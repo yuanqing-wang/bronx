@@ -11,17 +11,16 @@ def run(args):
     data = getattr(node_classification, args.data)()
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
-    from bronx.models.head.node_classification import NodeClassificationPyroHead
     from bronx.models.head import node_classification as heads
-    model = getattr(strategy, args.strategy)(
+    model = getattr(strategy, args.strategy.title() + "Model")(
         head=getattr(heads, args.head),
         layer=getattr(zoo, args.layer),
         in_features=data.in_features,
         out_features=data.num_classes,
         hidden_features=args.hidden_features,
         depth=args.depth,
+        num_data=data.g.ndata["train_mask"].sum(),
     )
-
 
     from lightning.pytorch.loggers import CSVLogger
     from lightning.pytorch.callbacks import ModelCheckpoint
@@ -63,13 +62,17 @@ if __name__ == "__main__":
 
     # strategy-specific arguments
     subparsers = parser.add_subparsers(dest="strategy")
-    structural = subparsers.add_parser("StructuralModel")
+
+    # structural
+    structural = subparsers.add_parser("structural")
     structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
 
-    functional = subparsers.add_parser("FunctionalModel")
+    # functional
+    functional = subparsers.add_parser("functional")
     functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
 
-    parametric = subparsers.add_parser("ParametricModel")
+    # parametric
+    parametric = subparsers.add_parser("parametric")
     parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
 
     # parse arguments    

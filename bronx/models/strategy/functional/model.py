@@ -58,6 +58,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             depth: int,
             activation: torch.nn.Module = torch.nn.Identity(),
             proj_in: bool = False,
+            *args, **kwargs,
     ):
         super().__init__()
         if proj_in:
