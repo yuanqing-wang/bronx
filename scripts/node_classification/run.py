@@ -1,3 +1,4 @@
+from tabnanny import verbose
 import torch
 import dgl
 import lightning as pl
@@ -29,7 +30,7 @@ def run(args):
     checkpoint_callback = ModelCheckpoint(
         monitor="val/accuracy",
         mode="max",
-        verbose=True,
+        verbose=False,
         dirpath="checkpoints",
         every_n_epochs=1,
         save_on_train_epoch_end=True,
