@@ -97,8 +97,8 @@ class EdgeLogitNormalPrior(torch.nn.Module):
             self.name,
             pyro.distributions.TransformedDistribution(
                 pyro.distributions.Normal(
-                    torch.zeros(g.number_of_edges(), self.out_features),
-                    torch.ones(g.number_of_edges(), self.out_features),
+                    torch.zeros(g.number_of_edges(), self.out_features, device=h.device),
+                    torch.ones(g.number_of_edges(), self.out_features, device=h.device),
                 ),
                 pyro.distributions.transforms.SigmoidTransform(),
             ).to_event(1),

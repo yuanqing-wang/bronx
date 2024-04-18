@@ -18,6 +18,7 @@ CONFIG = {
 def train(config):
     from run import run
     config.update(args.__dict__)
+    config["checkpoint"] = os.path.join(os.getcwd(), "checkpoint")
     config = SimpleNamespace(**config)
     run(config)
 
@@ -30,7 +31,7 @@ def run(args):
     )
 
     # specify the target
-    target = tune.with_resources(train, {"cpu": 1})
+    target = tune.with_resources(train, {"cpu": 1, "gpu": 1})
 
     # specify the run configuration
     tuner = tune.Tuner(
@@ -44,7 +45,10 @@ def run(args):
                 search_alg=OptunaSearch(),
             ),
             run_config=RunConfig(
-                    storage_path=os.path.join(os.getcwd(), str(args.__dict__)),
+                    storage_path=os.path.join(
+                        os.getcwd(), 
+                        ",".join(f"{k}={v}" for k, v in args.__dict__.items()),
+                    ),
             ),
     )
 

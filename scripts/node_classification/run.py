@@ -1,11 +1,11 @@
-from tabnanny import verbose
 import torch
 import dgl
 import lightning as pl
 
-from ray.tune.integration.pytorch_lightning import TuneReportCallback
-class _TuneReportCallback(TuneReportCallback, pl.Callback):
+from ray.tune.integration.pytorch_lightning import TuneReportCheckpointCallback
+class _TuneReportCallback(TuneReportCheckpointCallback, pl.Callback):
     pass
+
 
 def run(args):
     from bronx.data import node_classification
@@ -31,7 +31,7 @@ def run(args):
         monitor="val/accuracy",
         mode="max",
         verbose=False,
-        dirpath="checkpoints",
+        dirpath=args.checkpoint,
         every_n_epochs=1,
         save_on_train_epoch_end=True,
     )
@@ -39,7 +39,7 @@ def run(args):
     trainer = pl.Trainer(
         callbacks=[checkpoint_callback, _TuneReportCallback()],
         max_epochs=args.num_epochs, 
-        accelerator="cpu",
+        accelerator="cuda",
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
@@ -51,6 +51,7 @@ def run(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint", type=str, default="")
 
     # arguments shared by all programs
     parser.add_argument("--num_epochs", type=int, default=100)
