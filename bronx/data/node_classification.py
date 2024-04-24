@@ -17,6 +17,7 @@ def _get_graph(data):
     assert data in _ALL, f"Data {data} not found in {_ALL}"
     g = getattr(dgl.data, data)()[0]
     g = dgl.to_bidirected(g, copy_ndata=True)
+    g = dgl.add_self_loop(g)
     return g
 
 class SingleDataloader(object):

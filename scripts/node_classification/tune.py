@@ -47,7 +47,8 @@ def run(args):
             run_config=RunConfig(
                     storage_path=os.path.join(
                         os.getcwd(), 
-                        ",".join(f"{k}={v}" for k, v in args.__dict__.items()),
+                        # ",".join(f"{k}={v}" for k, v in args.__dict__.items()),
+                        f"{args.data}_{args.layer}_{args.strategy}",
                     ),
             ),
     )
@@ -59,10 +60,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, default="CoraGraphDataset")
-    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--num_epochs", type=int, default=500)
     parser.add_argument("--grace_period", type=int, default=10)
     parser.add_argument("--reduction_factor", type=int, default=2)
-    parser.add_argument("--num_samples", type=int, default=10)
+    parser.add_argument("--num_samples", type=int, default=1000)
     parser.add_argument("--layer", type=str, default="GCN")
 
     # strategy-specific arguments
@@ -71,6 +72,13 @@ if __name__ == "__main__":
     # structural
     structural = subparsers.add_parser("structural")
     structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
+    parametric = subparsers.add_parser("parametric")
+    parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
+    functional = subparsers.add_parser("functional")
+    functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
+    
 
     # parse args
     args = parser.parse_args()

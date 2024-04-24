@@ -56,7 +56,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             in_features: int,
             hidden_features: int,
             depth: int,
-            activation: torch.nn.Module = torch.nn.Identity(),
+            activation: torch.nn.Module = torch.nn.SiLU(),
             proj_in: bool = False,
             *args, **kwargs,
     ):
@@ -64,7 +64,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
         if proj_in:
             self.proj_in = torch.nn.Linear(in_features, hidden_features)
         
-        self.layers = Sequential(
+        self.layers = layer.sequential()(
             layer=layer,
             depth=depth,
             activation=activation,

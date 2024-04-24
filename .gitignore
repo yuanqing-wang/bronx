@@ -170,4 +170,5 @@ cython_debug/
 *.pkl
 *.csv
 *.tfevents*
-*.validate_storage_maker
+*.validate_storage_marker
+*checkpoint

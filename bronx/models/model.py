@@ -6,6 +6,7 @@ import pyro
 from torch.utils.data import Dataset
 from torch.distributions import Distribution
 import lightning as pl
+from ..global_parameters import NUM_SAMPLES
 
 class BronxModel(torch.nn.Module):
     """Base class for all models in the Bronx framework.
@@ -68,7 +69,7 @@ class BronxPyroMixin(object):
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
-            num_samples=1,
+            num_samples=NUM_SAMPLES,
             parallel=False,
             return_sites=["_RETURN"],
         )
@@ -85,7 +86,7 @@ class BronxPyroMixin(object):
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
-            num_samples=1,
+            num_samples=NUM_SAMPLES,
             parallel=False,
             return_sites=["_RETURN"],
         )

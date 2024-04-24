@@ -1,4 +1,5 @@
 from typing import Optional
+from bronx.global_parameters import NUM_SAMPLES
 import torch
 import pyro
 import dgl
@@ -7,6 +8,7 @@ from .edge import EdgeLogitNormalPrior, EdgeLogitNormalGuide
 from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 from ...head import node_classification as node_classification_head
 from ...zoo.dgl import Sequential
+from ....global_parameters import NUM_SAMPLES
 from dgl import DGLGraph
 import lightning
 
@@ -204,7 +206,7 @@ class UnwrappedStructuralModel(pyro.nn.PyroModule):
         if proj_out:
             self.proj_out = torch.nn.Linear(hidden_features, out_features)
 
-        self.layers = Sequential(
+        self.layers = layer.sequential()(
             layer=layer,
             depth=depth,
             activation=activation,
@@ -301,6 +303,7 @@ class StructuralModel(BronxPyroMixin, BronxLightningWrapper):
             self.guide,
             optim=optimizer,
             loss=loss,
+            num_samples=NUM_SAMPLES,
         )
 
     def configure_optimizers(self):

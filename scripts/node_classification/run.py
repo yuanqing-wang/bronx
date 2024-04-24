@@ -1,11 +1,12 @@
 import torch
 import dgl
+import pyro
 import lightning as pl
+from ray import train
 
-from ray.tune.integration.pytorch_lightning import TuneReportCheckpointCallback
-class _TuneReportCallback(TuneReportCheckpointCallback, pl.Callback):
-    pass
-
+from ray.tune.integration.pytorch_lightning import TuneReportCallback
+class _TuneReportCallback(TuneReportCallback, pl.Callback):
+    best = None
 
 def run(args):
     from bronx.data import node_classification
@@ -21,6 +22,7 @@ def run(args):
         hidden_features=args.hidden_features,
         depth=args.depth,
         num_data=data.g.ndata["train_mask"].sum(),
+        autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
     )
 
     from lightning.pytorch.loggers import CSVLogger
@@ -37,7 +39,7 @@ def run(args):
     )
 
     trainer = pl.Trainer(
-        callbacks=[checkpoint_callback, _TuneReportCallback()],
+        callbacks=[checkpoint_callback, _TuneReportCallback(metrics="val/accuracy")],
         max_epochs=args.num_epochs, 
         accelerator="cuda",
         logger=CSVLogger("logs", name="structural"),

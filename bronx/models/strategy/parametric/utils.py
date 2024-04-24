@@ -1,3 +1,4 @@
+from typing import ParamSpec
 import torch
 import pyro
 from pyro.nn.module import to_pyro_module_
@@ -27,15 +28,18 @@ def init_sigma(model, value):
         The value to initialize the log_sigma parameters to
 
     """
-    params = {
-        name: pyro.nn.PyroSample(
+    params = {}
+
+    for name, base_name in model.buffered_params.items():
+        mean_name = base_name + "_mean"
+        sigma_name = base_name + "_sigma"
+        mean = getattr(model, mean_name)
+        sigma = getattr(model, sigma_name)
+        params[name] = pyro.nn.PyroSample(
             pyro.distributions.Normal(
-                torch.zeros(param.shape),
-                torch.ones(param.shape) * value,
-            ).to_event(param.dim())
+                mean,sigma
+            ).to_event(mean.dim())
         )
-        for name, param in model.named_parameters()
-    }
 
     for name, param in params.items():
         rsetattr(model, name, params[name])
