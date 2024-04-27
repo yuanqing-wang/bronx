@@ -79,6 +79,9 @@ if __name__ == "__main__":
     parametric = subparsers.add_parser("parametric")
     parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
 
+    node = subparsers.add_parser("node")
+    node.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+
     # parse arguments    
     args = parser.parse_args()
     print(args)

@@ -172,3 +172,4 @@ cython_debug/
 *.tfevents*
 *.validate_storage_marker
 *checkpoint
+*error.txt

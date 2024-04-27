@@ -88,8 +88,8 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
         h = self.layers(g, h)
         if hasattr(self, "proj_out"):
             h = self.proj_out(h)
-        return h
-
+        return h 
+    
 class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
     def __init__(
             self, 
@@ -145,3 +145,128 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
         self.model.cpu(*args, **kwargs)
         init_sigma(self.model, self.model.sigma)
         return super().cpu(*args, **kwargs)
+    
+
+# =============================================================================
+# per node models
+# =============================================================================
+from .layers.per_node import GCN
+class UnwrappedPerNodeParametricModel(pyro.nn.PyroModule):
+    """ A model that characterizes the parametric uncertainty of a graph.
+    
+    Parameters
+    ----------
+    layer : torch.nn.Module
+        The layer to use.
+
+    in_features : int
+        The number of input features.
+
+    out_features : int
+        The number of output features.
+
+    hidden_features : int
+        The number of hidden features.
+
+    depth : int
+        The number of layers.
+
+    activation : torch.nn.Module
+        The activation function.
+
+    proj_in : bool
+        Whether to project the input features.
+
+    proj_out : bool
+        Whether to project the output features.
+    """
+
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            hidden_features: int,
+            depth: int,
+            activation: torch.nn.Module = torch.nn.SiLU(),
+            proj_in: bool = False,
+            proj_out: bool = False,
+            *args, **kwargs,
+    ):
+        super().__init__()
+        if proj_in:
+            self.proj_in = torch.nn.Linear(in_features, hidden_features)
+        if proj_out:
+            self.proj_out = torch.nn.Linear(hidden_features, out_features)
+
+        self.activation = activation
+        self.layers = torch.nn.ModuleList([
+            GCN(
+                in_features=in_features if idx == 0 and ~proj_in else hidden_features,
+                out_features=out_features if idx == depth - 1 and ~proj_out else hidden_features,
+                suffix=str(idx),
+            ) for idx in range(depth)
+        ])
+    
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        if hasattr(self, "proj_in"):
+            h = self.proj_in(h)
+        for layer in self.layers:
+            h = layer.forward(g, h)
+            h = self.activation(h)
+        if hasattr(self, "proj_out"):
+            h = self.proj_out(h)
+        return h 
+
+    def guide(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        if hasattr(self, "proj_in"):
+            h = self.proj_in(h)
+        for layer in self.layers:
+            h = layer.guide(g, h)
+            h = self.activation(h)
+        if hasattr(self, "proj_out"):
+            h = self.proj_out(h)
+        return h
+
+class PerNodeParametricModel(BronxPyroMixin, BronxLightningWrapper):
+    def __init__(
+            self, 
+            head: str,
+            sigma: float = 1.0,
+            optimizer: str = "Adam",
+            lr: float = 1e-2,
+            weight_decay: float = 1e-3,
+            loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
+            *args, 
+            **kwargs,
+    ):
+        model = UnwrappedPerNodeParametricModel(*args, **kwargs)
+        super().__init__(model)
+
+        # initialize head
+        self.head = head()
+        self.automatic_optimization = False
+        self.save_hyperparameters()
+
+        # initialize optimizer
+        optimizer = getattr(pyro.optim, optimizer)(
+            {"lr": lr, "weight_decay": weight_decay},
+        )
+
+        self.svi = pyro.infer.SVI(
+            self.forward,
+            self.guide,
+            optim=optimizer,
+            loss=loss,
+            num_samples=NUM_SAMPLES,
+        )
+
+    def configure_optimizers(self):
+        return None
