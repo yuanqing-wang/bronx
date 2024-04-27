@@ -289,7 +289,7 @@ class GCNII(GCN2Conv):
     """
     def __init__(self, in_feats, layer):
         super().__init__(
-            in_feats, layer=layer, project_initial_features=False,
+            in_feats, layer=layer, project_initial_features=True,
         )
 
     @property

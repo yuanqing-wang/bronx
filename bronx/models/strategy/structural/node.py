@@ -54,64 +54,6 @@ class EdgeConcatenation(torch.nn.Module):
         e = g.edata["e"]
         return e
     
-class EdgeDotProduct(torch.nn.Module):
-    """Dot multiply the source and destination node features to
-    form the edge features.
-
-    Parameters
-    ----------
-    in_features : int
-        The number of input features
-
-    out_features : int
-        The number of output features
-
-    Examples
-    --------
-    >>> import torch
-    >>> import dgl
-    >>> import bronx
-    >>> from bronx.models.structural.edge import EdgeDotProduct
-    >>> g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
-    >>> h = torch.randn(3, 10)
-    >>> model = EdgeConcatenation(10, 20)
-    >>> e = model(g, h)
-    >>> e.shape
-    torch.Size([2, 20])
-    """
-    def __init__(
-            self,
-            in_features: int,
-            out_features: int,
-    ):
-        super().__init__()
-        self.fc_src = torch.nn.Linear(in_features, 2 * out_features, bias=False)
-        self.fc_dst = torch.nn.Linear(in_features, 2 * out_features, bias=False)
-
-    def forward(
-            self,
-            g: DGLGraph,
-            h: torch.Tensor,
-    ):
-        g = g.local_var()
-        h_src = self.fc_src(h)
-        h_dst = self.fc_dst(h)
-        h_src = h_src.reshape(*h_src.shape[:-1], 2, -1)
-        h_dst = h_dst.reshape(*h_dst.shape[:-1], 2, -1)
-        g.ndata["h_src"], g.ndata["h_dst"] = h_src, h_dst
-        g.apply_edges(
-            func=lambda edges: {
-                "e": torch.einsum(
-                    "...bc, ...bc -> ...b", 
-                    edges.src["h_src"],
-                    edges.dst["h_dst"],
-                ),
-            },
-        )
-        # e = g.edata["e"].swapaxes(-2, -1)
-        return g.edata["e"]
-
-
 class EdgeLogitNormalPrior(torch.nn.Module):
     """Specify the logit normal prior distribution for the edge features.
 
@@ -200,13 +142,9 @@ class EdgeLogitNormalGuide(torch.nn.Module):
             name: str="e",
     ):
         super().__init__()
-        # self.edge_model = EdgeConcatenation(
-        #     in_features=in_features,
-        #     out_features=2*out_features,
-        # )
-        self.edge_model = EdgeDotProduct(
+        self.edge_model = EdgeConcatenation(
             in_features=in_features,
-            out_features=out_features,
+            out_features=2*out_features,
         )
         self.sigma_factor = sigma_factor
         self.name = name
