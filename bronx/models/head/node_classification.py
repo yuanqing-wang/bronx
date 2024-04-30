@@ -85,6 +85,7 @@ class NodeClassificationPyroHead(torch.nn.Module):
             return h
     
 class NodeClassificationGPytorchSteps(object):
+    @staticmethod
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
         self.model.train()
@@ -97,6 +98,7 @@ class NodeClassificationGPytorchSteps(object):
         self.log("train/loss", loss)
         return loss
     
+    @staticmethod
     def validation_step(self, batch, batch_idx):
         """Validation step for the model."""
         self.model.eval()

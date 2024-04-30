@@ -177,6 +177,18 @@ class FunctionalModel(pl.LightningModule):
             lr=self.lr,
             weight_decay=self.weight_decay,
         )
+    
+    def training_step(self, batch, batch_idx):
+        """Training step for the model."""
+        return self.head.steps.training_step(self, batch, batch_idx)
+    
+    def validation_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        return self.head.steps.validation_step(self, batch, batch_idx)  
+    
+    def test_step(self, batch, batch_idx):
+        """Test step for the model."""
+        return self.head.steps.test_step(self, batch, batch_idx)
 
 
         

@@ -102,7 +102,7 @@ class GraphGPLayer(gpytorch.Module):
             h: torch.Tensor,
     ):
         h = self.layer(g, h).tanh()
-        h = self.gp_layer(h).rsample()
+        h = self.gp_layer(h)# .rsample()
         return h
 
 
