@@ -79,6 +79,8 @@ if __name__ == "__main__":
     functional = subparsers.add_parser("functional")
     functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
     
+    node = subparsers.add_parser("node")
+    node.add_argument("--head", type=str, default="NodeClassificationPyroHead")
 
     # parse args
     args = parser.parse_args()

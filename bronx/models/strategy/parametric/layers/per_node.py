@@ -53,6 +53,7 @@ class GCN(pyro.nn.PyroModule):
             W: torch.Tensor,
             B: torch.Tensor,
     ):
+        print(W.shape)
         # graph convolution
         degs = g.out_degrees().float().clamp(min=1).unsqueeze(-1)
         norm = torch.pow(degs, -0.5)

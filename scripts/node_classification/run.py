@@ -39,21 +39,23 @@ def run(args):
     )
 
     trainer = pl.Trainer(
-        callbacks=[checkpoint_callback, _TuneReportCallback(metrics="val/accuracy")],
+        callbacks=[_TuneReportCallback(metrics="val/accuracy")],
         max_epochs=args.num_epochs, 
         accelerator="cuda",
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
     
-    # # load best
-    # model = StructuralModel.load_from_checkpoint(checkpoint_callback.best_model_path)
-    # g, h, y, mask = next(iter(data.test_dataloader()))
+    # test
+    if args.test:
+        trainer.test(datamodule=data)
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=str, default="")
+    parser.add_argument("--test", type=int, default=0)
 
     # arguments shared by all programs
     parser.add_argument("--num_epochs", type=int, default=100)

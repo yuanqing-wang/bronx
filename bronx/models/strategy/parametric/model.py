@@ -146,98 +146,33 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
         init_sigma(self.model, self.model.sigma)
         return super().cpu(*args, **kwargs)
     
-
-# =============================================================================
-# per node models
-# =============================================================================
-from .layers.per_node import GCN
-class UnwrappedPerNodeParametricModel(pyro.nn.PyroModule):
-    """ A model that characterizes the parametric uncertainty of a graph.
-    
-    Parameters
-    ----------
-    layer : torch.nn.Module
-        The layer to use.
-
-    in_features : int
-        The number of input features.
-
-    out_features : int
-        The number of output features.
-
-    hidden_features : int
-        The number of hidden features.
-
-    depth : int
-        The number of layers.
-
-    activation : torch.nn.Module
-        The activation function.
-
-    proj_in : bool
-        Whether to project the input features.
-
-    proj_out : bool
-        Whether to project the output features.
-    """
-
+class UnwrappedNodeModel(UnwrappedParametricModel):
     def __init__(
             self,
-            in_features: int,
-            out_features: int,
-            hidden_features: int,
-            depth: int,
-            activation: torch.nn.Module = torch.nn.SiLU(),
-            proj_in: bool = False,
-            proj_out: bool = False,
             *args, **kwargs,
     ):
-        super().__init__()
-        if proj_in:
-            self.proj_in = torch.nn.Linear(in_features, hidden_features)
-        if proj_out:
-            self.proj_out = torch.nn.Linear(hidden_features, out_features)
+        super().__init__(*args, **kwargs)
+        self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(0.0))
 
-        self.activation = activation
-        self.layers = torch.nn.ModuleList([
-            GCN(
-                in_features=in_features if idx == 0 and ~proj_in else hidden_features,
-                out_features=out_features if idx == depth - 1 and ~proj_out else hidden_features,
-                suffix=str(idx),
-            ) for idx in range(depth)
-        ])
-    
     def forward(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        if hasattr(self, "proj_in"):
-            h = self.proj_in(h)
-        for layer in self.layers:
-            h = layer.forward(g, h)
-            h = self.activation(h)
-        if hasattr(self, "proj_out"):
-            h = self.proj_out(h)
-        return h 
-
-    def guide(
-            self,
-            g: dgl.DGLGraph,
-            h: torch.Tensor,
-    ):
-        if hasattr(self, "proj_in"):
-            h = self.proj_in(h)
-        for layer in self.layers:
-            h = layer.guide(g, h)
-            h = self.activation(h)
-        if hasattr(self, "proj_out"):
-            h = self.proj_out(h)
-        return h
-
-class PerNodeParametricModel(BronxPyroMixin, BronxLightningWrapper):
+        mask = pyro.sample(
+            "mask",
+            pyro.distributions.Normal(
+                torch.ones_like(h),
+                torch.ones_like(h) * self.mask_log_sigma.exp(),
+            ).to_event(2),
+        )
+        h = h * mask
+        return super().forward(g, h)
+    
+class NodeModel(BronxPyroMixin, BronxLightningWrapper):
     def __init__(
             self, 
+            autoguide: pyro.infer.autoguide.guides.AutoGuide,
             head: str,
             sigma: float = 1.0,
             optimizer: str = "Adam",
@@ -247,8 +182,12 @@ class PerNodeParametricModel(BronxPyroMixin, BronxLightningWrapper):
             *args, 
             **kwargs,
     ):
-        model = UnwrappedPerNodeParametricModel(*args, **kwargs)
+        model = UnwrappedNodeModel(*args, **kwargs)
+        to_pyro_module_(model)
+        init_sigma(model, sigma)
         super().__init__(model)
+
+        self.model.guide = autoguide(model)
 
         # initialize head
         self.head = head()
@@ -270,3 +209,18 @@ class PerNodeParametricModel(BronxPyroMixin, BronxLightningWrapper):
 
     def configure_optimizers(self):
         return None
+
+    def to(self, *args, **kwargs):
+        self.model.to(*args, **kwargs)
+        init_sigma(self.model, self.model.sigma)
+        return super().to(*args, **kwargs)
+
+    def cuda(self, *args, **kwargs):
+        self.model.cuda(*args, **kwargs)
+        init_sigma(self.model, self.model.sigma)
+        return super().cuda(*args, **kwargs)
+    
+    def cpu(self, *args, **kwargs):
+        self.model.cpu(*args, **kwargs)
+        init_sigma(self.model, self.model.sigma)
+        return super().cpu(*args, **kwargs)
