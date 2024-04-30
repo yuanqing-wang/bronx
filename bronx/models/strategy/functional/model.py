@@ -178,27 +178,5 @@ class FunctionalModel(pl.LightningModule):
             weight_decay=self.weight_decay,
         )
 
-    def training_step(self, batch, batch_idx):
-        """Training step for the model."""
-        self.model.train()
-        self.head.train()
-        g, h, y, mask = batch
-        y_hat = self.model(g, h, mask=mask)
-        if mask is not None:
-            y = y[mask]
-        loss = self.head.loss(y_hat, y)
-        self.log("train/loss", loss)
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        """Validation step for the model."""
-        self.model.eval()
-        self.head.eval()
-        g, h, y, mask = batch
-        y_hat = self(g, h, mask=mask).probs.mean(0).argmax(-1)
-        if mask is not None:
-            y = y[mask]
-        accuracy = (y == y_hat).float().mean()
-        self.log("val/accuracy", accuracy)
 
         

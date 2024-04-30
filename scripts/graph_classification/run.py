@@ -11,6 +11,7 @@ class _TuneReportCallback(TuneReportCallback, pl.Callback):
 def run(args):
     from bronx.data import graph_classification
     data = getattr(graph_classification, args.data)()
+    data.setup()
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
     from bronx.models.head import graph_classification as heads
@@ -21,7 +22,7 @@ def run(args):
         out_features=data.num_classes,
         hidden_features=args.hidden_features,
         depth=args.depth,
-        num_data=data.g.ndata["train_mask"].sum(),
+        num_data=len(data.data_train),
         autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
     )
 
@@ -41,7 +42,7 @@ def run(args):
     trainer = pl.Trainer(
         callbacks=[_TuneReportCallback(metrics="val/accuracy")],
         max_epochs=args.num_epochs, 
-        accelerator="cuda",
+        accelerator="cpu",
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("--hidden_features", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
-    parser.add_argument("--data", type=str, default="CoraGraphDataset")
+    parser.add_argument("--data", type=str, default="MUTAG")
     parser.add_argument("--layer", type=str, default="GCN")
 
     # strategy-specific arguments
@@ -71,18 +72,18 @@ if __name__ == "__main__":
 
     # structural
     structural = subparsers.add_parser("structural")
-    structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    structural.add_argument("--head", type=str, default="GraphClassificationPyroHead")
 
     # functional
     functional = subparsers.add_parser("functional")
-    functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
+    functional.add_argument("--head", type=str, default="GraphClassificationGPytorchHead")
 
     # parametric
     parametric = subparsers.add_parser("parametric")
-    parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    parametric.add_argument("--head", type=str, default="GraphClassificationPyroHead")
 
     node = subparsers.add_parser("node")
-    node.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    node.add_argument("--head", type=str, default="GraphClassificationPyroHead")
 
     # parse arguments    
     args = parser.parse_args()
