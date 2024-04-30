@@ -81,7 +81,13 @@ class GraphClassificationDataModule(pl.LightningDataModule):
             self.hparams.batch_size = len(self.data_train)
         g, y = self.data_train[0]
         self.in_features = g.ndata["attr"].size(-1)
-        self.num_classes = y.max().item() + 1
+
+        y = torch.stack([y for _, y in self.data_train])
+        y_max = y.max().item()
+        if y_max == 1:
+            self.num_classes = 1
+        else:
+            self.num_classes = y_max + 1
         
     def train_dataloader(self):
         return dgl.dataloading.GraphDataLoader(

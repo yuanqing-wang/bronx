@@ -5,12 +5,13 @@ import dgl
 import gpytorch
 from ...global_parameters import NUM_SAMPLES
 
-class GraphClassificationPyroSteps(object):
+class GraphBinaryClassificationPyroSteps(object):
     @staticmethod
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
         g, y = batch
         h = g.ndata["attr"]
+        y = y.unsqueeze(-1).float()
         loss = self.svi.step(g, h, y)
 
         # NOTE: `self.optimizers` here is None
@@ -24,6 +25,7 @@ class GraphClassificationPyroSteps(object):
         """Validation step for the model."""
         g, y = batch
         h = g.ndata["attr"]
+        y = y.unsqueeze(-1).float()
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
@@ -31,7 +33,6 @@ class GraphClassificationPyroSteps(object):
             parallel=False,
             return_sites=["_RETURN"],
         )
-
         y_hat = predictive(g, h, y=None)["_RETURN"].mean(0)
         accuracy = (y_hat.argmax(-1) == y).float().mean()
         self.log("val/accuracy", accuracy)
@@ -42,6 +43,7 @@ class GraphClassificationPyroSteps(object):
         """Validation step for the model."""
         g, y = batch
         h = g.ndata["attr"]
+        y = y.unsqueeze(-1).float()
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
@@ -55,8 +57,8 @@ class GraphClassificationPyroSteps(object):
         self.log("test/accuracy", accuracy)
         return accuracy
 
-class GraphClassificationPyroHead(torch.nn.Module):
-    steps = GraphClassificationPyroSteps
+class GraphBinaryClassificationPyroHead(torch.nn.Module):
+    steps = GraphBinaryClassificationPyroSteps
     def forward(
             self, 
             g: dgl.DGLGraph, 
@@ -68,16 +70,17 @@ class GraphClassificationPyroHead(torch.nn.Module):
         g.ndata["h"] = h
         h = aggregator(g, "h")
         if y is not None:
-            return pyro.sample(
-                "y", 
-                pyro.distributions.Categorical(logits=h),
-                obs=y,
-            )
+            with pyro.plate("nodes", g.batch_size):
+                return pyro.sample(
+                    "y", 
+                    pyro.distributions.Bernoulli(logits=h.squeeze(-1)),
+                    obs=y.squeeze(-1),
+                )
         else:
             return h
         
 
-class GraphClassificationGPytorchHead(gpytorch.Module):
+class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
     def __init__(
             self, 
             in_features: int,

@@ -159,13 +159,14 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
+        # with pyro.plate("nodes", g.number_of_nodes()):
         mask = pyro.sample(
             "mask",
-            pyro.distributions.Normal(
-                torch.ones_like(h),
-                torch.ones_like(h) * self.mask_log_sigma.exp(),
-            ).to_event(2),
-        )
+            pyro.distributions.Cauchy(
+                torch.ones(g.number_of_nodes()),
+                torch.ones(g.number_of_nodes()) * self.mask_log_sigma.exp(),
+            ).to_event(1),
+        ).unsqueeze(-1)
         h = h * mask
         return super().forward(g, h)
     
@@ -187,7 +188,9 @@ class NodeModel(BronxPyroMixin, BronxLightningWrapper):
         init_sigma(model, sigma)
         super().__init__(model)
 
-        self.model.guide = autoguide(model)
+        self.model.guide = autoguide(
+            pyro.poutine.block(model, hide=["mask"]),
+        )
 
         # initialize head
         self.head = head()
