@@ -173,3 +173,5 @@ cython_debug/
 *.validate_storage_marker
 *checkpoint
 *error.txt
+
+*.bin
