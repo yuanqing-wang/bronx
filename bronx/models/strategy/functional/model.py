@@ -75,7 +75,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             hidden_features=hidden_features,
         )
 
-        self.gp = GPLayer(num_dim=hidden_features)
+        self.gp = GPLayer(num_dim=out_features)
         self.activation = activation
         self.hidden_features = hidden_features
         self.aggregation = aggregation
@@ -154,7 +154,11 @@ class FunctionalModel(pl.LightningModule):
             *args, **kwargs,
     ):
         super().__init__()
-        self.model = UnwrappedFunctionalModel(*args, **kwargs, aggregation=head.aggregation)
+        self.model = UnwrappedFunctionalModel(
+            *args, **kwargs, 
+            aggregation=head.aggregation,
+            out_features=out_features,
+        )
         self.head = head(
             num_classes=out_features,
             num_data=num_data,

@@ -41,7 +41,7 @@ def run(args):
     trainer = pl.Trainer(
         callbacks=[_TuneReportCallback(metrics="val/accuracy"), checkpoint_callback],
         max_epochs=args.num_epochs, 
-        accelerator="cuda",
+        accelerator="cpu",
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
