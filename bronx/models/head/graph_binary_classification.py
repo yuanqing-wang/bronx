@@ -128,6 +128,7 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
             self,
             h: torch.Tensor,
     ):
+        h = self.fc(h.rsample())
         return self.likelihood(h)
     
     def loss(
