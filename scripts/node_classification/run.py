@@ -39,16 +39,16 @@ def run(args):
     )
 
     trainer = pl.Trainer(
-        callbacks=[_TuneReportCallback(metrics="val/accuracy")],
+        callbacks=[_TuneReportCallback(metrics="val/accuracy"), checkpoint_callback],
         max_epochs=args.num_epochs, 
-        accelerator="cpu",
+        accelerator="cuda",
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
     
     # test
     if args.test:
-        trainer.test(datamodule=data)
+        trainer.test(model, datamodule=data, ckpt_path="best")
 
 
 if __name__ == "__main__":

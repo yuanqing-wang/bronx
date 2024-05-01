@@ -99,7 +99,9 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
             optimizer: str = "Adam",
             lr: float = 1e-2,
             weight_decay: float = 1e-3,
-            loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
+            loss: torch.nn.Module = pyro.infer.Trace_ELBO(
+                num_particles=NUM_SAMPLES,
+            ),
             *args, 
             **kwargs,
     ):
@@ -163,8 +165,8 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
         mask = pyro.sample(
             "mask",
             pyro.distributions.Normal(
-                torch.ones(g.number_of_nodes()),
-                torch.ones(g.number_of_nodes()) * self.mask_log_sigma.exp(),
+                torch.ones(g.number_of_nodes(), device=h.device),
+                torch.ones(g.number_of_nodes(), device=h.device) * self.mask_log_sigma.exp(),
             ).to_event(1),
         ).unsqueeze(-1)
         h = h * mask

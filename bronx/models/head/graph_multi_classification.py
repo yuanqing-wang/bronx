@@ -80,17 +80,15 @@ class GraphMultiClassificationPyroHead(torch.nn.Module):
 class GraphMultiClassificationGPytorchHead(gpytorch.Module):
     def __init__(
             self, 
-            in_features: int,
-            out_features: int,
+            num_classes: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
             aggregator: str = "sum",
         ):
         super().__init__()
         self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
-            num_features=in_features,
-            num_classes=out_features,
-            mixing_weights=True,
+            num_classes=num_classes,
+            mixing_weights=False,
         )
 
         self.mll = gpytorch.mlls.VariationalELBO(

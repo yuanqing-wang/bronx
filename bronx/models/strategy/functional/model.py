@@ -55,6 +55,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             layer: torch.nn.Module,
             in_features: int,
             hidden_features: int,
+            out_features: int,
             depth: int,
             activation: torch.nn.Module = torch.nn.SiLU(),
             proj_in: bool = False,
@@ -70,7 +71,7 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             depth=depth,
             activation=activation,
             in_features=in_features,
-            out_features=hidden_features,
+            out_features=out_features,
             hidden_features=hidden_features,
         )
 
@@ -155,8 +156,7 @@ class FunctionalModel(pl.LightningModule):
         super().__init__()
         self.model = UnwrappedFunctionalModel(*args, **kwargs, aggregation=head.aggregation)
         self.head = head(
-            in_features=self.model.hidden_features,
-            out_features=out_features,
+            num_classes=out_features,
             num_data=num_data,
             gp=self.model.gp,
         )

@@ -16,11 +16,12 @@ def run(args):
             pass
     
     results = sorted(results, key=lambda x: x["val/accuracy"], reverse=True)
+    print(results[0])
 
     if args.rerun:
         config = results[0]["config"]
         config["checkpoint"] = ""
-        config["test"] = 0
+        config["test"] = 1
         from types import SimpleNamespace
         config = SimpleNamespace(**config)
         from run import run
