@@ -99,8 +99,8 @@ class GraphBinaryClassificationGPytorchSteps(object):
         self.head.eval()
         g, y = batch
         h = g.ndata["attr"]
-        y_hat = self(g, h).probs.mean(0).argmax(-1)
-        accuracy = (y == y_hat).float().mean()
+        y_hat = self(g, h)
+        accuracy = (y == y_hat.probs.round()).float().mean()
         self.log("val/accuracy", accuracy)
 
 class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
@@ -108,13 +108,11 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
     aggregation = "sum"
     def __init__(
             self, 
-            in_features: int,
-            out_features: int,
+            num_classes: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
         ):
         super().__init__()
-        self.fc = torch.nn.Linear(in_features, out_features)
         self.likelihood = gpytorch.likelihoods.BernoulliLikelihood()
 
         self.mll = gpytorch.mlls.VariationalELBO(
@@ -128,7 +126,6 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
             self,
             h: torch.Tensor,
     ):
-        h = self.fc(h.rsample())
         return self.likelihood(h)
     
     def loss(
@@ -136,5 +133,5 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
             h: torch.Tensor,
             y: torch.Tensor,
     ):
-        loss = -self.mll(h, y)
+        loss = -self.mll(h, y).mean()
         return loss      

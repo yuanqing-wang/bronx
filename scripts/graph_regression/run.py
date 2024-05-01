@@ -15,11 +15,15 @@ def run(args):
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
     from bronx.models.head import graph_regression as heads
+    if args.strategy == "functional":
+        out_features = 1
+    else:
+        out_features = 2
     model = getattr(strategy, args.strategy.title() + "Model")(
         head=getattr(heads, args.head),
         layer=getattr(zoo, args.layer),
         in_features=data.in_features,
-        out_features=1,
+        out_features=out_features,
         hidden_features=args.hidden_features,
         depth=args.depth,
         num_data=len(data.data_train),

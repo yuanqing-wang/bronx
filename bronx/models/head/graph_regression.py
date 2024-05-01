@@ -70,11 +70,17 @@ class GraphRegressionPyroHead(torch.nn.Module):
         aggregator = getattr(dgl, f"{aggregator}_nodes")
         g.ndata["h"] = h
         h = aggregator(g, "h")
+        h_mu, h_log_sigma = h.chunk(2, dim=-1)
+        h_mu, h_log_sigma = h_mu.squeeze(-1), h_log_sigma.squeeze(-1)
+        h_sigma = torch.nn.functional.softplus(h_log_sigma)
         if y is not None:
             with pyro.plate("nodes", g.batch_size):
                 return pyro.sample(
                     "y", 
-                    pyro.distributions.Delta(h.squeeze(-1)),
+                    pyro.distributions.Normal(
+                        h_mu,
+                        h_sigma,
+                    ),
                     obs=y.squeeze(-1),
                 )
         else:

@@ -77,7 +77,33 @@ class GraphMultiClassificationPyroHead(torch.nn.Module):
             return h
         
 
+class GraphMultiClassificationGPytorchSteps(object):
+    @staticmethod
+    def training_step(self, batch, batch_idx):
+        """Training step for the model."""
+        self.model.train()
+        self.head.train()
+        g, y = batch
+        h = g.ndata["attr"]
+        y_hat = self.model(g, h)
+        loss = self.head.loss(y_hat, y)
+        self.log("train/loss", loss)
+        return loss
+    
+    @staticmethod
+    def validation_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        self.model.eval()
+        self.head.eval()
+        g, y = batch
+        h = g.ndata["attr"]
+        y_hat = self(g, h).probs.mean(0).argmax(-1)
+        accuracy = (y == y_hat).float().mean()
+        self.log("val/accuracy", accuracy)
+
 class GraphMultiClassificationGPytorchHead(gpytorch.Module):
+    aggregation = "sum"
+    steps = GraphMultiClassificationGPytorchSteps
     def __init__(
             self, 
             num_classes: int,
@@ -88,7 +114,7 @@ class GraphMultiClassificationGPytorchHead(gpytorch.Module):
         super().__init__()
         self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
             num_classes=num_classes,
-            mixing_weights=False,
+            mixing_weights=None,
         )
 
         self.mll = gpytorch.mlls.VariationalELBO(
@@ -101,20 +127,14 @@ class GraphMultiClassificationGPytorchHead(gpytorch.Module):
 
     def forward(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
         ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
         return self.likelihood(h)
     
     def loss(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
             y: torch.Tensor,
     ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
         loss = -self.mll(h, y)
         return loss      
