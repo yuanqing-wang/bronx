@@ -163,11 +163,11 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
         mask = pyro.sample(
             "mask",
             pyro.distributions.Normal(
-                torch.ones(g.number_of_nodes()),
+                torch.zeros(g.number_of_nodes()),
                 torch.ones(g.number_of_nodes()) * self.mask_log_sigma.exp(),
             ).to_event(1),
         ).unsqueeze(-1)
-        h = h * mask
+        h = h + mask
         return super().forward(g, h)
     
 class NodeModel(BronxPyroMixin, BronxLightningWrapper):
