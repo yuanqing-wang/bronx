@@ -128,7 +128,6 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
             self,
             h: torch.Tensor,
     ):
-        h = h @ self.fc.weight.T + self.fc.bias
         return self.likelihood(h)
     
     def loss(
