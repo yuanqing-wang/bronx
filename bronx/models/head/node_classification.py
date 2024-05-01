@@ -113,6 +113,7 @@ class NodeClassificationGPytorchSteps(object):
 from ...global_parameters import NUM_SAMPLES
 class NodeClassificationGPytorchHead(gpytorch.Module):
     steps = NodeClassificationGPytorchSteps
+    aggregation = None
     def __init__(
             self, 
             in_features: int,

@@ -34,7 +34,7 @@ class GraphBinaryClassificationPyroSteps(object):
             return_sites=["_RETURN"],
         )
         y_hat = predictive(g, h, y=None)["_RETURN"].mean(0)
-        accuracy = (y_hat.argmax(-1) == y).float().mean()
+        accuracy = (y_hat.sigmoid().round() == y).float().mean()
         self.log("val/accuracy", accuracy)
         return accuracy
     
@@ -53,7 +53,7 @@ class GraphBinaryClassificationPyroSteps(object):
         )
 
         y_hat = predictive(g, h, y=None)["_RETURN"].mean(0)
-        accuracy = (y_hat.argmax(-1) == y).float().mean()
+        accuracy = (y_hat.sigmoid().round() == y).float().mean()
         self.log("test/accuracy", accuracy)
         return accuracy
 
@@ -79,22 +79,43 @@ class GraphBinaryClassificationPyroHead(torch.nn.Module):
         else:
             return h
         
+class GraphBinaryClassificationGPytorchSteps(object):
+    @staticmethod
+    def training_step(self, batch, batch_idx):
+        """Training step for the model."""
+        self.model.train()
+        self.head.train()
+        g, y = batch
+        h = g.ndata["attr"]
+        y_hat = self.model(g, h)
+        loss = self.head.loss(y_hat, y)
+        self.log("train/loss", loss)
+        return loss
+    
+    @staticmethod
+    def validation_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        self.model.eval()
+        self.head.eval()
+        g, y = batch
+        h = g.ndata["attr"]
+        y_hat = self(g, h).probs.mean(0).argmax(-1)
+        accuracy = (y == y_hat).float().mean()
+        self.log("val/accuracy", accuracy)
 
 class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
+    steps = GraphBinaryClassificationGPytorchSteps
+    aggregation = "sum"
     def __init__(
             self, 
             in_features: int,
             out_features: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
-            aggregator: str = "sum",
         ):
         super().__init__()
-        self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
-            num_features=in_features,
-            num_classes=out_features,
-            mixing_weights=True,
-        )
+        self.fc = torch.nn.Linear(in_features, out_features)
+        self.likelihood = gpytorch.likelihoods.BernoulliLikelihood()
 
         self.mll = gpytorch.mlls.VariationalELBO(
             likelihood=self.likelihood,
@@ -102,24 +123,18 @@ class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
             num_data=num_data,
         )
 
-        self.aggregator = getattr(dgl, f"{aggregator}_nodes")
 
     def forward(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
-        ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
+    ):
+        h = h @ self.fc.weight.T + self.fc.bias
         return self.likelihood(h)
     
     def loss(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
             y: torch.Tensor,
     ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
         loss = -self.mll(h, y)
         return loss      

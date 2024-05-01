@@ -14,12 +14,12 @@ def run(args):
     data.setup()
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
-    from bronx.models.head import graph_classification as heads
+    from bronx.models.head import graph_binary_classification as heads
     model = getattr(strategy, args.strategy.title() + "Model")(
         head=getattr(heads, args.head),
         layer=getattr(zoo, args.layer),
         in_features=data.in_features,
-        out_features=data.num_classes,
+        out_features=1,
         hidden_features=args.hidden_features,
         depth=args.depth,
         num_data=len(data.data_train),
@@ -72,18 +72,18 @@ if __name__ == "__main__":
 
     # structural
     structural = subparsers.add_parser("structural")
-    structural.add_argument("--head", type=str, default="GraphClassificationPyroHead")
+    structural.add_argument("--head", type=str, default="GraphBinaryClassificationPyroHead")
 
     # functional
     functional = subparsers.add_parser("functional")
-    functional.add_argument("--head", type=str, default="GraphClassificationGPytorchHead")
+    functional.add_argument("--head", type=str, default="GraphBinaryClassificationGPytorchHead")
 
     # parametric
     parametric = subparsers.add_parser("parametric")
-    parametric.add_argument("--head", type=str, default="GraphClassificationPyroHead")
+    parametric.add_argument("--head", type=str, default="GraphBinaryClassificationPyroHead")
 
     node = subparsers.add_parser("node")
-    node.add_argument("--head", type=str, default="GraphClassificationPyroHead")
+    node.add_argument("--head", type=str, default="GraphBinaryClassificationPyroHead")
 
     # parse arguments    
     args = parser.parse_args()

@@ -162,7 +162,7 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
         # with pyro.plate("nodes", g.number_of_nodes()):
         mask = pyro.sample(
             "mask",
-            pyro.distributions.Cauchy(
+            pyro.distributions.Normal(
                 torch.ones(g.number_of_nodes()),
                 torch.ones(g.number_of_nodes()) * self.mask_log_sigma.exp(),
             ).to_event(1),

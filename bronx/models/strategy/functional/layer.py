@@ -84,6 +84,7 @@ class GraphGPLayer(gpytorch.Module):
             out_features,
             grid_bounds=(-1, 1),
             grid_size=64,
+            aggregation=None,
     ):
         super().__init__()
         self.layer = layer(
@@ -96,12 +97,20 @@ class GraphGPLayer(gpytorch.Module):
             grid_size=grid_size,
         )
 
+        self.aggregation = aggregation
+        if self.aggregation is not None:
+            self.aggregation = getattr(dgl, f"{self.aggregation}_nodes")
+
     def forward(
             self,
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        h = self.layer(g, h).tanh()
+        h = self.layer(g, h)
+        if self.aggregation:
+            g["h"] = h
+            h = self.aggregation(g, "h")
+        h = h.tanh()
         h = self.gp_layer(h)# .rsample()
         return h
 
