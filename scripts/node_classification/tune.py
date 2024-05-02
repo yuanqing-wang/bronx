@@ -9,7 +9,7 @@ from ray.train import RunConfig, ScalingConfig, CheckpointConfig
 from ray.tune.search.optuna import OptunaSearch
 
 CONFIG = {
-    "depth": tune.randint(2, 32),
+    "depth": tune.randint(2, 8),
     "hidden_features": tune.lograndint(32, 128),
     "lr": tune.loguniform(1e-4, 1e-1),
     "weight_decay": tune.loguniform(1e-6, 1e-2),
