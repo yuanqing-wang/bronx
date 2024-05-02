@@ -101,6 +101,7 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
             weight_decay: float = 1e-3,
             loss: torch.nn.Module = pyro.infer.Trace_ELBO(
                 num_particles=NUM_SAMPLES,
+                vectorize_particles=True,
             ),
             *args, 
             **kwargs,
