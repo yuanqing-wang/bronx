@@ -3,6 +3,7 @@ import torch
 import pyro
 import dgl
 import gpytorch
+from ..regularizer import ConsistencyRegularizer
 
 class NodeClassificationPyroSteps(object):
     @staticmethod
@@ -54,6 +55,20 @@ class NodeClassificationPyroSteps(object):
 
 class NodeClassificationPyroHead(torch.nn.Module):
     steps = NodeClassificationPyroSteps
+
+    def __init__(
+            self,
+            consistency_temperature: float = 1.0,
+            consistency_factor: float = 1.0,
+    ):
+        super().__init__()
+        self.consistency_temperature = consistency_temperature
+        self.consistency_factor = consistency_factor
+        self.regularizer = ConsistencyRegularizer(
+            consistency_temperature=self.consistency_temperature,
+            consistency_factor=self.consistency_factor,
+        )
+
     def forward(
             self, 
             g: dgl.DGLGraph, 
