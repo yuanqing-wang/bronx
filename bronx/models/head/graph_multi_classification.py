@@ -28,7 +28,7 @@ class GraphMultiClassificationPyroSteps(object):
             self.svi.model,
             guide=self.svi.guide,
             num_samples=NUM_SAMPLES,
-            parallel=False,
+            parallel=True,
             return_sites=["_RETURN"],
         )
         y_hat = predictive(g, h, y=None)["_RETURN"].mean(0)
@@ -45,7 +45,7 @@ class GraphMultiClassificationPyroSteps(object):
             self.svi.model,
             guide=self.svi.guide,
             num_samples=NUM_SAMPLES,
-            parallel=False,
+            parallel=True,
             return_sites=["_RETURN"],
         )
 
