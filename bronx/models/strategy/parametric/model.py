@@ -154,7 +154,7 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
             *args, **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(0.0))
+        self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(-5.0))
 
     def forward(
             self,
