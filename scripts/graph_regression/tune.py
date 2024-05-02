@@ -38,8 +38,8 @@ def run(args):
             target,
             param_space=CONFIG,
             tune_config=tune.TuneConfig(
-                metric="val/accuracy",
-                mode="max",
+                metric="val/rmse",
+                mode="min",
                 num_samples=args.num_samples,
                 scheduler=scheduler,
                 search_alg=OptunaSearch(),
