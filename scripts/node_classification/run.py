@@ -10,7 +10,11 @@ class _TuneReportCallback(TuneReportCallback, pl.Callback):
 
 def run(args):
     from bronx.data import node_classification
-    data = getattr(node_classification, args.data)()
+    if args.split >= 0:
+        split = args.split
+    else:
+        split = None
+    data = getattr(node_classification, args.data)(split=split)
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
     from bronx.models.head import node_classification as heads
@@ -65,6 +69,7 @@ if __name__ == "__main__":
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--data", type=str, default="CoraGraphDataset")
     parser.add_argument("--layer", type=str, default="GCN")
+    parser.add_argument("--split", type=int, default=-1)
 
     # strategy-specific arguments
     subparsers = parser.add_subparsers(dest="strategy")

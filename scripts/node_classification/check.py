@@ -22,6 +22,7 @@ def run(args):
         config = results[0]["config"]
         config["checkpoint"] = ""
         config["test"] = 1
+        config["split"] = -1
         from types import SimpleNamespace
         config = SimpleNamespace(**config)
         from run import run

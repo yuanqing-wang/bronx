@@ -5,4 +5,4 @@
 #BSUB -W 12:00
 #BSUB -n 1
 
-python tune.py --layer $LAYER --data $DATA $STRATEGY
+python tune.py --layer $LAYER --data $DATA --split $SPLIT $STRATEGY

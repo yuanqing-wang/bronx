@@ -65,6 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--reduction_factor", type=int, default=2)
     parser.add_argument("--num_samples", type=int, default=1000)
     parser.add_argument("--layer", type=str, default="GCN")
+    parser.add_argument("--split", type=int, default=-1)
 
     # strategy-specific arguments
     subparsers = parser.add_subparsers(dest="strategy")
