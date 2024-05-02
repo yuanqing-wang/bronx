@@ -60,18 +60,36 @@ class GraphRegressionPyroSteps(object):
 
 class GraphRegressionPyroHead(torch.nn.Module):
     steps = GraphRegressionPyroSteps
+    aggregator = "mean"
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            activation: Optional[torch.nn.Module] = torch.nn.SiLU(),
+    ):
+        super().__init__()
+        self.fc = torch.nn.Sequential(
+            torch.nn.Linear(in_features, in_features),
+            activation,
+            torch.nn.Linear(in_features, 2 * out_features),
+        )
+
     def forward(
             self, 
             g: dgl.DGLGraph, 
             h: torch.Tensor,
             y: Optional[torch.Tensor] = None,
-            aggregator: str = "sum",
         ):
-        aggregator = getattr(dgl, f"{aggregator}_nodes")
+        aggregator = getattr(dgl, f"{self.aggregator}_nodes")
+        parallel = h.shape[-1] != g.number_of_nodes()
+        if parallel:
+            h = h.swapaxes(-2, 0)
         g.ndata["h"] = h
         h = aggregator(g, "h")
+        if parallel:
+            h = h.swapaxes(0, -2)
+        h = self.fc(h)
         h_mu, h_log_sigma = h.chunk(2, dim=-1)
-        h_mu, h_log_sigma = h_mu.squeeze(-1), h_log_sigma.squeeze(-1)
         h_sigma = torch.nn.functional.softplus(h_log_sigma)
         if y is not None:
             with pyro.plate("nodes", g.batch_size):
@@ -80,8 +98,8 @@ class GraphRegressionPyroHead(torch.nn.Module):
                     pyro.distributions.Normal(
                         h_mu,
                         h_sigma,
-                    ),
-                    obs=y.squeeze(-1),
+                    ).to_event(1),
+                    obs=y,
                 )
         else:
             return h

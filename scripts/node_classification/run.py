@@ -27,6 +27,8 @@ def run(args):
         depth=args.depth,
         num_data=data.g.ndata["train_mask"].sum(),
         autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
+        consistency_factor=args.consistency_factor,
+        consistency_temperature=args.consistency_temperature,
     )
 
     from lightning.pytorch.loggers import CSVLogger
@@ -60,6 +62,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=str, default="")
     parser.add_argument("--test", type=int, default=0)
+    parser.add_argument("--split", type=int, default=-1)
 
     # arguments shared by all programs
     parser.add_argument("--num_epochs", type=int, default=100)
@@ -69,7 +72,8 @@ if __name__ == "__main__":
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--data", type=str, default="CoraGraphDataset")
     parser.add_argument("--layer", type=str, default="GCN")
-    parser.add_argument("--split", type=int, default=-1)
+    parser.add_argument("--consistency_factor", type=float, default=1.0)
+    parser.add_argument("--consistency_temperature", type=float, default=1.0)
 
     # strategy-specific arguments
     subparsers = parser.add_subparsers(dest="strategy")

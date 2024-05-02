@@ -13,6 +13,8 @@ CONFIG = {
     "hidden_features": tune.lograndint(32, 128),
     "lr": tune.loguniform(1e-4, 1e-1),
     "weight_decay": tune.loguniform(1e-6, 1e-2),
+    "consistency_temperature": tune.loguniform(1e-1, 1.0),
+    "consistency_factor": tune.loguniform(1e-5, 1.0),
 }
 
 def train(config):

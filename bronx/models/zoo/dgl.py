@@ -1,10 +1,10 @@
+from re import L
 import torch
 from functools import partial
 import dgl
 from dgl import DGLGraph
 
-from dgl.nn import GraphConv
-class GCN(GraphConv):
+class GCN(torch.nn.Module):
     """Graph Convolutional Networks. https://arxiv.org/abs/1609.02907
 
     Examples
@@ -18,9 +18,51 @@ class GCN(GraphConv):
     >>> h.shape
     torch.Size([3, 20])
     """
-    def __init__(self, *args, **kwargs):
-        kwargs["allow_zero_in_degree"] = True
-        super().__init__(*args, **kwargs)
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.fc = torch.nn.Linear(in_features, out_features)
+    
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        g = g.local_var()
+        norm = torch.pow(g.in_degrees().float().clamp(min=1), -0.5).to(h.device).unsqueeze(1)
+        h = h * norm
+        h = h @ self.fc.weight.swapaxes(-1, -2)
+        parallel = h.shape[0] != g.number_of_nodes()
+        
+        if parallel:
+            h = h.swapaxes(0, -2)
+        g.ndata["h"] = h
+        g.update_all(
+            dgl.function.copy_u("h", "m"),
+            dgl.function.sum("m", "h"),
+        )
+        h = g.ndata.pop("h")
+        if parallel:
+            h = h.swapaxes(0, -2)
+        h = h * norm
+        return h
+
+
+    @classmethod
+    def sequential(cls):
+        return Sequential
+    
+class GAT(torch.nn.Module):
+    """Graph Attention Networks. https://arxiv.org/abs/1710.10903
+
+    """
+    def __init__(self, in_feats, out_feats):
+        super().__init__()
+        self._in_feats, self._out_feats = in_feats, out_feats
+        self.fc = torch.nn.Linear(in_feats, out_feats, bias=False)
+        self.fc_edge_left = torch.nn.Linear(out_feats, 1, bias=False)
+        self.fc_edge_right = torch.nn.Linear(out_feats, 1, bias=False)
 
     @property
     def in_features(self):
@@ -30,145 +72,37 @@ class GCN(GraphConv):
     def out_features(self):
         return self._out_feats
     
-    def forward(self, graph, feat, weight=None, edge_weight=None):
-        r"""
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        """Forward pass."""
+        g = g.local_var()
+        h = h @ self.fc.weight.swapaxes(-1, -2)
+        e_left, e_right = h @ self.fc_edge_left.weight.swapaxes(-1, -2), h @ self.fc_edge_right.weight.swapaxes(-1, -2)
 
-        Description
-        -----------
-        Compute graph convolution.
-
-        Parameters
-        ----------
-        graph : DGLGraph
-            The graph.
-        feat : torch.Tensor or pair of torch.Tensor
-            If a torch.Tensor is given, it represents the input feature of shape
-            :math:`(N, D_{in})`
-            where :math:`D_{in}` is size of input feature, :math:`N` is the number of nodes.
-            If a pair of torch.Tensor is given, which is the case for bipartite graph, the pair
-            must contain two tensors of shape :math:`(N_{in}, D_{in_{src}})` and
-            :math:`(N_{out}, D_{in_{dst}})`.
-        weight : torch.Tensor, optional
-            Optional external weight tensor.
-        edge_weight : torch.Tensor, optional
-            Optional tensor on the edge. If given, the convolution will weight
-            with regard to the message.
-
-        Returns
-        -------
-        torch.Tensor
-            The output feature
-
-        Raises
-        ------
-        DGLError
-            Case 1:
-            If there are 0-in-degree nodes in the input graph, it will raise DGLError
-            since no message will be passed to those nodes. This will cause invalid output.
-            The error can be ignored by setting ``allow_zero_in_degree`` parameter to ``True``.
-
-            Case 2:
-            External weight is provided while at the same time the module
-            has defined its own weight parameter.
-
-        Note
-        ----
-        * Input shape: :math:`(N, *, \text{in_feats})` where * means any number of additional
-          dimensions, :math:`N` is the number of nodes.
-        * Output shape: :math:`(N, *, \text{out_feats})` where all but the last dimension are
-          the same shape as the input.
-        * Weight shape: :math:`(\text{in_feats}, \text{out_feats})`.
-        """
-        import torch as th
-        from torch import nn
-
-        from dgl import function as fn
-        from dgl.base import DGLError
-        from dgl.utils import expand_as_pair
-
-        with graph.local_scope():
-            if not self._allow_zero_in_degree:
-                if (graph.in_degrees() == 0).any():
-                    raise DGLError('There are 0-in-degree nodes in the graph, '
-                                   'output for those nodes will be invalid. '
-                                   'This is harmful for some applications, '
-                                   'causing silent performance regression. '
-                                   'Adding self-loop on the input graph by '
-                                   'calling `g = dgl.add_self_loop(g)` will resolve '
-                                   'the issue. Setting ``allow_zero_in_degree`` '
-                                   'to be `True` when constructing this module will '
-                                   'suppress the check and let the code run.')
-            aggregate_fn = fn.copy_u('h', 'm')
-            if edge_weight is not None:
-                assert edge_weight.shape[0] == graph.number_of_edges()
-                graph.edata['_edge_weight'] = edge_weight
-                aggregate_fn = fn.u_mul_e('h', '_edge_weight', 'm')
-
-            # (BarclayII) For RGCN on heterogeneous graphs we need to support GCN on bipartite.
-            feat_src, feat_dst = expand_as_pair(feat, graph)
-            if self._norm in ['left', 'both']:
-                degs = graph.out_degrees().float().clamp(min=1)
-                if self._norm == 'both':
-                    norm = th.pow(degs, -0.5)
-                else:
-                    norm = 1.0 / degs
-                # shp = norm.shape + (1,) * (feat_src.dim() - 1)
-                shp = norm.shape + (1,)
-                norm = th.reshape(norm, shp)
-                feat_src = feat_src * norm
-
-            if weight is not None:
-                if self.weight is not None:
-                    raise DGLError('External weight is provided while at the same time the'
-                                   ' module has defined its own weight parameter. Please'
-                                   ' create the module with flag weight=False.')
-            else:
-                weight = self.weight
-
-            if self._in_feats > self._out_feats:
-                # mult W first to reduce the feature size for aggregation.
-                if weight is not None:
-                    feat_src = th.matmul(feat_src, weight)
-                parallel = feat_src.shape[0] != graph.number_of_nodes()
-                if parallel:
-                    feat_src = feat_src.swapaxes(0, -2)
-                graph.srcdata['h'] = feat_src
-                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
-                rst = graph.dstdata['h']
-                if parallel:
-                    rst = rst.swapaxes(0, -2)
-            else:
-                # aggregate first then mult W
-                parallel = feat_src.shape[0] != graph.number_of_nodes()
-                if parallel:
-                    feat_src = feat_src.swapaxes(0, -2)
-                graph.srcdata['h'] = feat_src
-                graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
-                rst = graph.dstdata['h']
-                if parallel:
-                    rst = rst.swapaxes(0, -2)
-                if weight is not None:
-                    rst = th.matmul(rst, weight)
-
-            if self._norm in ['right', 'both']:
-                degs = graph.in_degrees().float().clamp(min=1)
-                if self._norm == 'both':
-                    norm = th.pow(degs, -0.5)
-                else:
-                    norm = 1.0 / degs
-                # shp = norm.shape + (1,) * (feat_dst.dim() - 1)
-                shp = norm.shape + (1,)
-                norm = th.reshape(norm, shp)
-                rst = rst * norm
-
-            if self.bias is not None:
-                rst = rst + self.bias
-
-            if self._activation is not None:
-                rst = self._activation(rst)
-
-            return rst
-
+        parallel = h.shape[0] != g.number_of_nodes()
+        if parallel:
+            h = h.swapaxes(0, -2)
+            e_left = e_left.swapaxes(0, -2)
+            e_right = e_right.swapaxes(0, -2)
+        
+        g.ndata["h"] = h
+        g.ndata["e_left"], g.ndata["e_right"] = e_left, e_right
+        g.apply_edges(dgl.function.u_add_v("e_left", "e_right", "e"))
+        g.edata["e"] = torch.nn.functional.leaky_relu(g.edata["e"], negative_slope=0.2)
+        from dgl.nn.functional import edge_softmax
+        e = edge_softmax(g, g.edata["e"])
+        g.edata["e"] = e
+        g.update_all(
+            dgl.function.u_mul_e("h", "e", "m"),
+            dgl.function.sum("m", "h"),
+        )
+        h = g.ndata.pop("h")
+        if parallel:
+            h = h.swapaxes(0, -2)
+        return h
 
     @classmethod
     def sequential(cls):

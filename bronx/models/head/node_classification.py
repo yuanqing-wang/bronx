@@ -1,3 +1,4 @@
+from re import template
 from typing import Optional
 import torch
 import pyro
@@ -25,7 +26,7 @@ class NodeClassificationPyroSteps(object):
             self.svi.model,
             guide=self.svi.guide,
             num_samples=NUM_SAMPLES,
-            parallel=False,
+            parallel=True,
             return_sites=["_RETURN"],
         )
 
@@ -43,7 +44,7 @@ class NodeClassificationPyroSteps(object):
             self.svi.model,
             guide=self.svi.guide,
             num_samples=NUM_SAMPLES,
-            parallel=False,
+            parallel=True,
             return_sites=["_RETURN"],
         )
 
@@ -65,8 +66,8 @@ class NodeClassificationPyroHead(torch.nn.Module):
         self.consistency_temperature = consistency_temperature
         self.consistency_factor = consistency_factor
         self.regularizer = ConsistencyRegularizer(
-            consistency_temperature=self.consistency_temperature,
-            consistency_factor=self.consistency_factor,
+            temperature=self.consistency_temperature,
+            factor=self.consistency_factor,
         )
 
     def forward(
