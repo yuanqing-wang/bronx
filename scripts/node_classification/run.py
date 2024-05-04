@@ -72,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--data", type=str, default="CoraGraphDataset")
     parser.add_argument("--layer", type=str, default="GCN")
-    parser.add_argument("--consistency_factor", type=float, default=1.0)
+    parser.add_argument("--consistency_factor", type=float, default=0.0)
     parser.add_argument("--consistency_temperature", type=float, default=1.0)
 
     # strategy-specific arguments

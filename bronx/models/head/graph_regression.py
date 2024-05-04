@@ -30,7 +30,7 @@ class GraphRegressionPyroSteps(object):
             self.svi.model,
             guide=self.svi.guide,
             num_samples=NUM_SAMPLES,
-            parallel=False,
+            parallel=True,
             return_sites=["_RETURN"],
         )
 
@@ -60,66 +60,63 @@ class GraphRegressionPyroSteps(object):
 
 class GraphRegressionPyroHead(torch.nn.Module):
     steps = GraphRegressionPyroSteps
-    aggregator = "mean"
-    def __init__(
-            self,
-            in_features: int,
-            out_features: int,
-            activation: Optional[torch.nn.Module] = torch.nn.SiLU(),
-    ):
-        super().__init__()
-        self.fc = torch.nn.Sequential(
-            torch.nn.Linear(in_features, in_features),
-            activation,
-            torch.nn.Linear(in_features, 2 * out_features),
-        )
-
     def forward(
             self, 
             g: dgl.DGLGraph, 
             h: torch.Tensor,
             y: Optional[torch.Tensor] = None,
         ):
-        aggregator = getattr(dgl, f"{self.aggregator}_nodes")
-        parallel = h.shape[-1] != g.number_of_nodes()
-        if parallel:
-            h = h.swapaxes(-2, 0)
-        g.ndata["h"] = h
-        h = aggregator(g, "h")
-        if parallel:
-            h = h.swapaxes(0, -2)
-        h = self.fc(h)
         h_mu, h_log_sigma = h.chunk(2, dim=-1)
         h_sigma = torch.nn.functional.softplus(h_log_sigma)
+
         if y is not None:
+            h_mu, h_sigma = h_mu.squeeze(-1), h_sigma.squeeze(-1)
+            y = y.squeeze(-1)
             with pyro.plate("nodes", g.batch_size):
                 return pyro.sample(
-                    "y", 
-                    pyro.distributions.Normal(
-                        h_mu,
-                        h_sigma,
-                    ).to_event(1),
+                    "y",
+                    pyro.distributions.Normal(h_mu, h_sigma), # .to_event(1),
                     obs=y,
                 )
+
         else:
-            return h
+            return h_mu
+        
+class GraphRegressionGPytorchSteps(object):
+    @staticmethod
+    def training_step(self, batch, batch_idx):
+        """Training step for the model."""
+        _, g, y = batch
+        h = g.ndata["h"]
+        y = y.float()
+        y_hat = self.model(g, h)
+        loss = self.head.loss(y_hat, y)
+        loss.backward()
+        self.optimizers().step()
+        return loss.item()
+    
+    @staticmethod
+    def validation_step(self, batch, batch_idx):
+        """Validation step for the model."""
+        _, g, y = batch
+        h = g.ndata["h"]
+        y = y.float()
+        y_hat = self.model(g, h)
+        rmse = ((y_hat.mean - y) ** 2).mean().sqrt()
+        self.log("val/rmse", rmse)
+        return rmse
         
 
 class GraphRegressionGPytorchHead(gpytorch.Module):
+    steps = GraphRegressionGPytorchSteps
     def __init__(
             self, 
-            in_features: int,
-            out_features: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
-            aggregator: str = "sum",
+            **kwargs,
         ):
         super().__init__()
-        self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
-            num_features=in_features,
-            num_classes=out_features,
-            mixing_weights=True,
-        )
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
         self.mll = gpytorch.mlls.VariationalELBO(
             likelihood=self.likelihood,
@@ -127,24 +124,16 @@ class GraphRegressionGPytorchHead(gpytorch.Module):
             num_data=num_data,
         )
 
-        self.aggregator = getattr(dgl, f"{aggregator}_nodes")
-
     def forward(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
         ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
         return self.likelihood(h)
     
     def loss(
             self,
-            g: dgl.DGLGraph,
             h: torch.Tensor,
             y: torch.Tensor,
     ):
-        g.ndata["h"] = h
-        h = self.aggregator(g, "h")
         loss = -self.mll(h, y)
         return loss      

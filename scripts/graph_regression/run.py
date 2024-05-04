@@ -10,7 +10,7 @@ class _TuneReportCallback(TuneReportCallback, pl.Callback):
 
 def run(args):
     from bronx.data import graph_regression
-    data = getattr(graph_regression, args.data)()
+    data = getattr(graph_regression, args.data)(batch_size=args.batch_size)
     data.setup()
     import bronx.models.zoo.dgl as zoo
     from bronx.models import strategy
@@ -19,6 +19,10 @@ def run(args):
         out_features = 1
     else:
         out_features = 2
+
+    y = [data.data_train[i][2] for i in range(len(data.data_train))]
+    y = torch.tensor(y).float()
+
     model = getattr(strategy, args.strategy.title() + "Model")(
         head=getattr(heads, args.head),
         layer=getattr(zoo, args.layer),
@@ -28,6 +32,7 @@ def run(args):
         depth=args.depth,
         num_data=len(data.data_train),
         autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
+        aggregation=True,
     )
 
     from lightning.pytorch.loggers import CSVLogger
@@ -35,8 +40,8 @@ def run(args):
     import lightning
 
     checkpoint_callback = ModelCheckpoint(
-        monitor="val/accuracy",
-        mode="max",
+        monitor="val/rmse",
+        mode="min",
         verbose=False,
         dirpath=args.checkpoint,
         every_n_epochs=1,
@@ -44,7 +49,7 @@ def run(args):
     )
 
     trainer = pl.Trainer(
-        callbacks=[_TuneReportCallback(metrics="val/accuracy")],
+        callbacks=[_TuneReportCallback(metrics="val/rmse")],
         max_epochs=args.num_epochs, 
         accelerator="auto",
         logger=CSVLogger("logs", name="structural"),
@@ -67,9 +72,10 @@ if __name__ == "__main__":
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument("--hidden_features", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=1e-5)
+    parser.add_argument("--weight_decay", type=float, default=1e-10)
     parser.add_argument("--data", type=str, default="ESOL")
     parser.add_argument("--layer", type=str, default="GCN")
+    parser.add_argument("--batch_size", type=int, default=-1)
 
     # strategy-specific arguments
     subparsers = parser.add_subparsers(dest="strategy")

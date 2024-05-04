@@ -60,15 +60,17 @@ class NodeClassificationPyroHead(torch.nn.Module):
     def __init__(
             self,
             consistency_temperature: float = 1.0,
-            consistency_factor: float = 1.0,
+            consistency_factor: float = 0.0,
     ):
         super().__init__()
         self.consistency_temperature = consistency_temperature
         self.consistency_factor = consistency_factor
-        self.regularizer = ConsistencyRegularizer(
-            temperature=self.consistency_temperature,
-            factor=self.consistency_factor,
-        )
+
+        if self.consistency_factor > 0:
+            self.regularizer = ConsistencyRegularizer(
+                temperature=self.consistency_temperature,
+                factor=self.consistency_factor,
+            )
 
     def forward(
             self, 
@@ -85,18 +87,17 @@ class NodeClassificationPyroHead(torch.nn.Module):
         else:
             number_of_nodes = g.number_of_nodes()
 
-        # compute the scale
-        scale = g.number_of_edges() / number_of_nodes
+        if self.consistency_factor > 0:
+            self.regularizer(h)
 
         # sample the logits
         if y is not None:
-            with pyro.poutine.scale(None, scale=scale):
-                with pyro.plate("obs_nodes", number_of_nodes):
-                    return pyro.sample(
-                        "y", 
-                        pyro.distributions.Categorical(logits=h),
-                        obs=y,
-                    )
+            with pyro.plate("obs_nodes", number_of_nodes):
+                return pyro.sample(
+                    "y", 
+                    pyro.distributions.Categorical(logits=h),
+                    obs=y,
+                )
         else:
             return h
     

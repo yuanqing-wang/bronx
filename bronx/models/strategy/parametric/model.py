@@ -47,6 +47,7 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             proj_in: bool = False,
             proj_out: bool = False,
             sigma: float = 1.0,
+            aggregation: bool = False,
             *args, **kwargs,
     ):
         super().__init__()
@@ -62,6 +63,7 @@ class UnwrappedParametricModel(pyro.nn.PyroModule):
             in_features=in_features,
             out_features=out_features,
             hidden_features=hidden_features,
+            aggregation=aggregation,
         )
 
         self.sigma = sigma
@@ -182,7 +184,10 @@ class NodeModel(BronxPyroMixin, BronxLightningWrapper):
             optimizer: str = "Adam",
             lr: float = 1e-2,
             weight_decay: float = 1e-3,
-            loss: torch.nn.Module = pyro.infer.Trace_ELBO(),
+            loss: torch.nn.Module = pyro.infer.Trace_ELBO(
+                num_particles=NUM_SAMPLES,
+                vectorize_particles=True,
+            ),
             *args, 
             **kwargs,
     ):

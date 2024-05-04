@@ -13,6 +13,7 @@ CONFIG = {
     "hidden_features": tune.lograndint(32, 128),
     "lr": tune.loguniform(1e-4, 1e-1),
     "weight_decay": tune.loguniform(1e-6, 1e-2),
+    "batch_size": -1,
 }
 
 def train(config):
@@ -71,16 +72,16 @@ if __name__ == "__main__":
 
     # structural
     structural = subparsers.add_parser("structural")
-    structural.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    structural.add_argument("--head", type=str, default="GraphRegressionPyroHead")
 
     parametric = subparsers.add_parser("parametric")
-    parametric.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    parametric.add_argument("--head", type=str, default="GraphRegressionPyroHead")
 
     functional = subparsers.add_parser("functional")
-    functional.add_argument("--head", type=str, default="NodeClassificationGPytorchHead")
+    functional.add_argument("--head", type=str, default="GraphRegressionGPytorchHead")
     
     node = subparsers.add_parser("node")
-    node.add_argument("--head", type=str, default="NodeClassificationPyroHead")
+    node.add_argument("--head", type=str, default="GraphRegressionPyroHead")
 
     # parse args
     args = parser.parse_args()

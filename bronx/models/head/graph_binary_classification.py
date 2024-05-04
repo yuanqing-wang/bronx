@@ -64,11 +64,7 @@ class GraphBinaryClassificationPyroHead(torch.nn.Module):
             g: dgl.DGLGraph, 
             h: torch.Tensor,
             y: Optional[torch.Tensor] = None,
-            aggregator: str = "sum",
         ):
-        aggregator = getattr(dgl, f"{aggregator}_nodes")
-        g.ndata["h"] = h
-        h = aggregator(g, "h")
         if y is not None:
             with pyro.plate("nodes", g.batch_size):
                 return pyro.sample(
@@ -105,7 +101,6 @@ class GraphBinaryClassificationGPytorchSteps(object):
 
 class GraphBinaryClassificationGPytorchHead(gpytorch.Module):
     steps = GraphBinaryClassificationGPytorchSteps
-    aggregation = "sum"
     def __init__(
             self, 
             num_classes: int,

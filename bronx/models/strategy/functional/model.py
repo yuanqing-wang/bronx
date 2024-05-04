@@ -71,11 +71,12 @@ class UnwrappedFunctionalModel(gpytorch.Module):
             depth=depth,
             activation=activation,
             in_features=in_features,
-            out_features=out_features,
+            out_features=hidden_features,
             hidden_features=hidden_features,
+            aggregation=aggregation,
         )
-
-        self.gp = GPLayer(num_dim=out_features)
+        print(out_features, "out_features")
+        self.gp = GPLayer(num_dim=hidden_features, num_tasks=out_features)
         self.activation = activation
         self.hidden_features = hidden_features
         self.aggregation = aggregation
@@ -91,9 +92,8 @@ class UnwrappedFunctionalModel(gpytorch.Module):
         h = self.layers(g, h)
         if mask is not None:
             h = h[..., mask, :]
-        if self.aggregation is not None:
-            g.ndata["h"] = h
-            h = getattr(dgl, f"{self.aggregation}_nodes")(g, "h")
+        if hasattr(self, "proj_out"):
+            h = self.proj_out(h)
         h = h.tanh()
         h = h.transpose(-1, -2).unsqueeze(-1)
         h = self.gp(h)
@@ -151,13 +151,14 @@ class FunctionalModel(pl.LightningModule):
             num_data: int,
             lr: float = 1e-3,
             weight_decay: float = 1e-5,
+            aggregation: bool = False,
             *args, **kwargs,
     ):
         super().__init__()
         self.model = UnwrappedFunctionalModel(
             *args, **kwargs, 
-            aggregation=head.aggregation,
             out_features=out_features,
+            aggregation=aggregation,
         )
         self.head = head(
             num_classes=out_features,

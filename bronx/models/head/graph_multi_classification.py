@@ -61,11 +61,7 @@ class GraphMultiClassificationPyroHead(torch.nn.Module):
             g: dgl.DGLGraph, 
             h: torch.Tensor,
             y: Optional[torch.Tensor] = None,
-            aggregator: str = "sum",
         ):
-        aggregator = getattr(dgl, f"{aggregator}_nodes")
-        g.ndata["h"] = h
-        h = aggregator(g, "h")
         if y is not None:
             with pyro.plate("nodes", g.batch_size):
                 return pyro.sample(
@@ -102,14 +98,12 @@ class GraphMultiClassificationGPytorchSteps(object):
         self.log("val/accuracy", accuracy)
 
 class GraphMultiClassificationGPytorchHead(gpytorch.Module):
-    aggregation = "sum"
     steps = GraphMultiClassificationGPytorchSteps
     def __init__(
             self, 
             num_classes: int,
             gp: gpytorch.models.VariationalGP,
             num_data: int,
-            aggregator: str = "sum",
         ):
         super().__init__()
         self.likelihood = gpytorch.likelihoods.SoftmaxLikelihood(
@@ -122,8 +116,6 @@ class GraphMultiClassificationGPytorchHead(gpytorch.Module):
             model=gp,
             num_data=num_data,
         )
-
-        self.aggregator = getattr(dgl, f"{aggregator}_nodes")
 
     def forward(
             self,

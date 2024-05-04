@@ -23,7 +23,9 @@ def run(args):
         hidden_features=args.hidden_features,
         depth=args.depth,
         num_data=len(data.data_train),
-        autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
+        # autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
+        autoguide=pyro.infer.autoguide.AutoDelta,
+        aggregation=True,
     )
 
     from lightning.pytorch.loggers import CSVLogger

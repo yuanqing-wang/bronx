@@ -35,6 +35,8 @@ def init_sigma(model, value):
         sigma_name = base_name + "_sigma"
         mean = getattr(model, mean_name)
         sigma = getattr(model, sigma_name)
+        if mean.dim() == 1:
+            continue
         params[name] = pyro.nn.PyroSample(
             pyro.distributions.Normal(
                 mean,sigma

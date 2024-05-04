@@ -108,6 +108,8 @@ class GAT(torch.nn.Module):
     def sequential(cls):
         return Sequential
     
+
+    
 from dgl.nn import SGConv
 class SGC(dgl.nn.SGConv):
     """Simplifying Graph Convolutional Networks. https://arxiv.org/abs/1902.07153
@@ -265,6 +267,46 @@ class GIN(GINConv):
     def sequential(cls):
         return Sequential
     
+
+class Aggregation(torch.nn.Module):
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            activation: torch.nn.Module = torch.nn.SiLU(),
+            aggregator: torch.nn.Module = dgl.mean_nodes,
+            **kwargs,
+    ):
+        super().__init__()
+        self.W0 = torch.nn.Parameter(torch.randn(in_features, in_features))
+        self.B0 = torch.nn.Parameter(torch.randn(in_features))
+        self.W1 = torch.nn.Parameter(torch.randn(in_features, out_features))
+        self.B1 = torch.nn.Parameter(torch.randn(out_features))
+        self.activation = activation
+        self.aggregator = aggregator
+
+    def forward(
+            self,
+            g: DGLGraph,
+            h: torch.Tensor,
+            **kwargs,
+    ):
+        """Forward pass."""
+        g = g.local_var()
+        parallel = h.shape[0] != g.number_of_nodes()
+        if parallel:
+            h = h.swapaxes(0, -2)
+        g.ndata["h"] = h
+        h = self.aggregator(g, "h")
+        if parallel:
+            h = h.swapaxes(0, -2)
+        # h = self.activation(h)
+        h = h @ self.W0 + self.B0
+        h = self.activation(h)
+        h = h @ self.W1 + self.B1
+        return h
+
+
 class Sequential(torch.nn.Module):
     """A simple sequential model.
 
@@ -319,17 +361,22 @@ class Sequential(torch.nn.Module):
             out_features: int,
             depth: int,
             activation: torch.nn.Module,
+            aggregation: bool = False,
             **kwargs,
     ):
         super().__init__()
         self.layers = torch.nn.ModuleList([
             layer(
                 hidden_features if idx > 0 else in_features, 
-                hidden_features if idx < depth - 1 else out_features, 
+                out_features if idx == depth - 1 and not aggregation else hidden_features,
                 **kwargs
             )
             for idx in range(depth)
         ])
+        if aggregation:
+            self.aggregation = Aggregation(hidden_features, out_features, activation)
+        else:
+            self.aggregation = None
         self.activation = activation
 
     def forward(
@@ -341,10 +388,11 @@ class Sequential(torch.nn.Module):
         """Forward pass."""
         g = g.local_var()
         for idx, layer in enumerate(self.layers):
-            parallel = h.shape[0] != g.number_of_nodes()
             h = layer(g, h, **kwargs)
-            if idx < len(self.layers) - 1:
+            if idx < len(self.layers) - 1 or self.aggregation:
                 h = self.activation(h)
+        if self.aggregation:
+            h = self.aggregation(g, h)
         return h
     
 from dgl.nn import GCN2Conv

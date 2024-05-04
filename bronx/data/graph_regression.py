@@ -51,6 +51,7 @@ class GraphRegressionDataModule(pl.LightningDataModule):
         self.data = getattr(dgllife.data, self.hparams.data)(
             node_featurizer=CanonicalAtomFeaturizer("h"),
             edge_featurizer=CanonicalBondFeaturizer("e"),
+
         )
 
         self.in_features = self.data[0][1].ndata["h"].shape[-1]
@@ -60,6 +61,8 @@ class GraphRegressionDataModule(pl.LightningDataModule):
         self.data_train, self.data_valid, self.data_test = splitter.train_val_test_split(
             self.data, frac_train=0.8, frac_val=0.1, frac_test=0.1, 
         )
+
+
 
         if self.hparams.batch_size == -1:
             self.hparams.batch_size = len(self.data_train)
