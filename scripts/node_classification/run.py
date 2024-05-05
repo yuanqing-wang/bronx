@@ -25,7 +25,7 @@ def run(args):
         out_features=data.num_classes,
         hidden_features=args.hidden_features,
         depth=args.depth,
-        num_data=data.g.ndata["train_mask"].sum(),
+        num_data=data.g.ndata["train_mask"].sum(),  
         autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
         consistency_factor=args.consistency_factor,
         consistency_temperature=args.consistency_temperature,

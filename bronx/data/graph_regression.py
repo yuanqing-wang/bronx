@@ -62,11 +62,9 @@ class GraphRegressionDataModule(pl.LightningDataModule):
             self.data, frac_train=0.8, frac_val=0.1, frac_test=0.1, 
         )
 
-
-
         if self.hparams.batch_size == -1:
             self.hparams.batch_size = len(self.data_train)
-
+    
     def train_dataloader(self):
         return dgl.dataloading.GraphDataLoader(
             dataset=self.data_train,

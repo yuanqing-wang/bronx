@@ -15,7 +15,8 @@ def run(args):
         except:
             pass
     
-    results = sorted(results, key=lambda x: x["val/accuracy"], reverse=True)
+    results = sorted(results, key=lambda x: x["val/rmse"], reverse=False)
+    print(results[0])
 
     if args.rerun:
         config = results[0]["config"]
