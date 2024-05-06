@@ -44,12 +44,13 @@ class SingleDataloader(object):
 def collate_fn(batch, mask_name="train_mask"):
     assert len(batch) == 1
     g = batch[0]
-    return (
-        g,
-        g.ndata["feat"],
-        g.ndata["label"],
-        g.ndata[mask_name],
-    )
+    # return (
+    #     g,
+    #     g.ndata["feat"],
+    #     g.ndata["label"],
+    #     g.ndata[mask_name],
+    # )
+    return g
 
 class NodeClassificationDataModule(pl.LightningDataModule):
     def __init__(self, data, split=None):

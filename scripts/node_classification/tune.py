@@ -54,6 +54,7 @@ def run(args):
                         # ",".join(f"{k}={v}" for k, v in args.__dict__.items()),
                         f"{args.data}_{args.layer}_{args.strategy}",
                     ),
+                    checkpoint_config=CheckpointConfig(num_to_keep=1),
             ),
     )
 

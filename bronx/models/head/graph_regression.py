@@ -67,7 +67,10 @@ class GraphRegressionPyroHead(torch.nn.Module):
             y: Optional[torch.Tensor] = None,
         ):
         h_mu, h_log_sigma = h.chunk(2, dim=-1)
-        h_sigma = torch.nn.functional.softplus(h_log_sigma)
+        # h_sigma = torch.nn.functional.softplus(h_log_sigma)
+        h_sigma = torch.exp(h_log_sigma)
+        print(h_sigma)
+        # h_sigma = h_log_sigma.sigmoid()
 
         # if y is not None:
         h_mu, h_sigma = h_mu.squeeze(-1), h_sigma.squeeze(-1)

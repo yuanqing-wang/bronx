@@ -4,9 +4,15 @@ import pyro
 import lightning as pl
 from ray import train
 
-from ray.tune.integration.pytorch_lightning import TuneReportCallback
-class _TuneReportCallback(TuneReportCallback, pl.Callback):
+from ray.tune.integration.pytorch_lightning import TuneReportCallback, TuneReportCheckpointCallback
+class _TuneReportCallback(TuneReportCheckpointCallback, pl.Callback):
     best = None
+
+class Trainer(pl.Trainer):
+    def save_checkpoint(
+        self, filepath, *args, **kwargs,
+    ) -> None:
+        torch.save(self.model, filepath)
 
 def run(args):
     from bronx.data import node_classification
@@ -35,17 +41,22 @@ def run(args):
     from lightning.pytorch.callbacks import ModelCheckpoint
     import lightning
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val/accuracy",
-        mode="max",
-        verbose=False,
-        dirpath=args.checkpoint,
-        every_n_epochs=1,
-        save_on_train_epoch_end=True,
-    )
+    # checkpoint_callback = ModelCheckpoint(
+    #     monitor="val/accuracy",
+    #     mode="max",
+    #     verbose=False,
+    #     dirpath=args.checkpoint,
+    #     every_n_epochs=1,
+    #     save_on_train_epoch_end=True,
+    # )
 
     trainer = pl.Trainer(
-        callbacks=[_TuneReportCallback(metrics="val/accuracy"), checkpoint_callback],
+        callbacks=[
+            _TuneReportCallback(
+                metrics=["val/accuracy", "test/accuracy", "test/accuracy_std"],
+                save_checkpoints=False,
+            )
+        ],
         max_epochs=args.num_epochs, 
         accelerator="auto",
         logger=CSVLogger("logs", name="structural"),

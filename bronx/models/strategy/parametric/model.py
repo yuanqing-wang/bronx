@@ -7,6 +7,7 @@ from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 from ....global_parameters import NUM_SAMPLES
 
 class UnwrappedParametricModel(pyro.nn.PyroModule):
+# class UnwrappedParametricModel(torch.nn.Module):
     """ A model that characterizes the parametric uncertainty of a graph.
     
     Parameters
@@ -157,7 +158,8 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
             *args, **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(-5.0))
+        # self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(-5.0))
+        self.mask_log_sigma = torch.nn.Parameter(torch.tensor(-5.0))
 
     def forward(
             self,

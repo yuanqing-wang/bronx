@@ -10,7 +10,13 @@ class NodeClassificationPyroSteps(object):
     @staticmethod
     def training_step(self, batch, batch_idx):
         """Training step for the model."""
-        loss = self.svi.step(*batch)
+        g = batch
+        loss = self.svi.step(
+            g,
+            g.ndata["feat"],
+            g.ndata["label"],
+            g.ndata["train_mask"],
+        )
 
         # NOTE: `self.optimizers` here is None
         # but this is to trick the lightning module
@@ -21,7 +27,10 @@ class NodeClassificationPyroSteps(object):
     @staticmethod
     def validation_step(self, batch, batch_idx):
         """Validation step for the model."""
-        g, h, y, mask = batch
+        g = batch
+        h = g.ndata["feat"]
+        y = g.ndata["label"]
+        mask = g.ndata["val_mask"]
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
@@ -29,12 +38,24 @@ class NodeClassificationPyroSteps(object):
             parallel=True,
             return_sites=["_RETURN"],
         )
+        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"]
 
-        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"].mean(0)[mask]
-        y = y[mask]
-        accuracy = (y_hat.argmax(-1) == y).float().mean()
-        self.log("val/accuracy", accuracy)
-        return accuracy
+        y_hat_vl = y_hat.mean(0)[g.ndata["val_mask"]]
+        y_vl = y[g.ndata["val_mask"]]
+        accuracy_vl = (y_hat_vl.argmax(-1) == y_vl).float().mean()
+        self.log("val/accuracy", accuracy_vl, batch_size=1)
+
+        y_hat_te = y_hat.mean(0)[g.ndata["test_mask"]]
+        y_te = y[g.ndata["test_mask"]]
+        accuracy_te = (y_hat_te.argmax(-1) == y_te).float().mean()
+        self.log("test/accuracy", accuracy_te, batch_size=1)
+
+        y_hat_te_samples = y_hat[:, g.ndata["test_mask"]]
+        y_te_samples = y[g.ndata["test_mask"]].unsqueeze(0)
+        accuracy_te_samples = (y_hat_te_samples.argmax(-1) == y_te_samples).float().mean(-1)
+        self.log("test/accuracy_std", accuracy_te_samples.std(), batch_size=1)
+
+        return accuracy_vl
     
     @staticmethod
     def test_step(self, batch, batch_idx):

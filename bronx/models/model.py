@@ -17,7 +17,6 @@ class BronxModel(torch.nn.Module):
         Make a prediction using the model.
 
     """
-    pass
 
 class BronxLightningWrapper(pl.LightningModule):
     def __init__(self, model: BronxModel):
@@ -40,6 +39,23 @@ class BronxPyroMixin(object):
         """Forward pass for the model."""
         h = self.model(g, h)
         return self.head(g, h, y, *args, **kwargs)
+    
+    @classmethod
+    def custom_load_from_checkpoint(cls, checkpoint_path: str):
+        """Load a model from a checkpoint."""
+        checkpoint = torch.load(checkpoint_path)
+        hyper_parameters = checkpoint["hyper_parameters"]
+        model = cls(**hyper_parameters)
+        state_dict = checkpoint["state_dict"]
+        state_dict_without_guide = {
+            key: value for key, value in state_dict.items() if "guide" not in key
+        }
+        model.load_state_dict(state_dict_without_guide)
+
+        print(state_dict["model.guide.loc"])
+        model.model.guide.loc = state_dict["model.guide.loc"]
+        model.model.guide.scale_unconstrained = state_dict["model.guide.scale_unconstrained"]
+        return model
     
     def guide(
             self,
