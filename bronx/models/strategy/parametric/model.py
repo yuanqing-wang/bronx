@@ -6,8 +6,8 @@ from ...zoo.dgl import Sequential
 from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 from ....global_parameters import NUM_SAMPLES
 
-class UnwrappedParametricModel(pyro.nn.PyroModule):
-# class UnwrappedParametricModel(torch.nn.Module):
+# class UnwrappedParametricModel(pyro.nn.PyroModule):
+class UnwrappedParametricModel(torch.nn.Module):
     """ A model that characterizes the parametric uncertainty of a graph.
     
     Parameters
@@ -166,14 +166,14 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
             g: dgl.DGLGraph,
             h: torch.Tensor,
     ):
-        # with pyro.plate("nodes", g.number_of_nodes()):
-        mask = pyro.sample(
-            "mask",
-            pyro.distributions.Normal(
-                torch.zeros(g.number_of_nodes(), device=h.device),
-                torch.ones(g.number_of_nodes(), device=h.device) * self.mask_log_sigma.exp(),
-            ).to_event(1),
-        ).unsqueeze(-1)
+        with pyro.plate("mask_nodes", g.number_of_nodes()):
+            mask = pyro.sample(
+                "mask",
+                pyro.distributions.Normal(
+                    torch.zeros(g.number_of_nodes(), device=h.device),
+                    torch.ones(g.number_of_nodes(), device=h.device) * self.mask_log_sigma.exp(),
+                )# .to_event(1),
+            ).unsqueeze(-1)
         h = h + mask
         return super().forward(g, h)
     

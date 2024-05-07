@@ -273,15 +273,15 @@ class Aggregation(torch.nn.Module):
             self,
             in_features: int,
             out_features: int,
-            activation: torch.nn.Module = torch.nn.SiLU(),
+            activation: torch.nn.Module = torch.nn.Tanh(),
             aggregator: torch.nn.Module = dgl.mean_nodes,
             **kwargs,
     ):
         super().__init__()
-        self.W0 = torch.nn.Parameter(torch.randn(in_features, in_features))
-        self.B0 = torch.nn.Parameter(torch.randn(in_features))
-        self.W1 = torch.nn.Parameter(torch.randn(in_features, out_features))
-        self.B1 = torch.nn.Parameter(torch.randn(out_features))
+        self.W0 = torch.nn.Parameter(1e-2 * torch.randn(in_features, in_features))
+        self.B0 = torch.nn.Parameter(1e-2 * torch.randn(in_features))
+        self.W1 = torch.nn.Parameter(1e-2 * torch.randn(in_features, out_features))
+        self.B1 = torch.nn.Parameter(1e-2 * torch.randn(out_features))
         self.activation = activation
         self.aggregator = aggregator
 
