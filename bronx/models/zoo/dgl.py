@@ -3,6 +3,7 @@ import torch
 from functools import partial
 import dgl
 from dgl import DGLGraph
+import math
 
 class GCN(torch.nn.Module):
     """Graph Convolutional Networks. https://arxiv.org/abs/1609.02907
@@ -53,6 +54,69 @@ class GCN(torch.nn.Module):
     def sequential(cls):
         return Sequential
     
+class BRONX(torch.nn.Module):
+    def __init__(self, in_feats, out_feats, depth=2):
+        super().__init__()
+        self._in_feats, self._out_feats = in_feats, out_feats
+        self.fc = torch.nn.Linear(in_feats, out_feats, bias=False)
+        self.fc_edge_left = torch.nn.Linear(out_feats, 1, bias=False)
+        self.fc_edge_right = torch.nn.Linear(out_feats, 1, bias=False)
+        self.depth = depth
+
+    @property
+    def in_features(self):
+        return self._in_feats
+    
+    @property
+    def out_features(self):
+        return self._out_feats
+    
+    def forward(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        """Forward pass."""
+        g = g.local_var()
+        h = h @ self.fc.weight.swapaxes(-1, -2)
+        e_left, e_right = h @ self.fc_edge_left.weight.swapaxes(-1, -2), h @ self.fc_edge_right.weight.swapaxes(-1, -2)
+
+        parallel = h.shape[0] != g.number_of_nodes()
+        if parallel:
+            h = h.swapaxes(0, -2)
+            e_left = e_left.swapaxes(0, -2)
+            e_right = e_right.swapaxes(0, -2)
+        
+        g.ndata["h"] = h
+        g.ndata["e_left"], g.ndata["e_right"] = e_left, e_right
+        g.apply_edges(dgl.function.u_add_v("e_left", "e_right", "e"))
+        g.edata["e"] = torch.nn.functional.leaky_relu(g.edata["e"], negative_slope=0.2)
+        # src, dst = g.edges()
+        # src, dst = src.unsqueeze(-1), dst.unsqueeze(-1)
+        # while src.dim() < g.edata["e"].dim():
+        #     src, dst = src.unsqueeze(-1), dst.unsqueeze(-1)
+        # g.edata["e"] = torch.where(src == dst, -1e5 * torch.ones_like(g.edata["e"]), g.edata["e"])
+        from dgl.nn.functional import edge_softmax
+        g = dgl.remove_self_loop(g)
+        e = edge_softmax(g, g.edata["e"])
+        g.edata["e"] = e
+        # g.edata["e"] = torch.where(src == dst, -1.0 * torch.ones_like(g.edata["e"]), g.edata["e"])
+        h = 0.0
+        for idx in range(self.depth):
+            g.update_all(
+                dgl.function.u_mul_e("h", "e", "m"),
+                dgl.function.sum("m", "h"),
+            )
+            h = h + g.ndata["h"] / math.factorial(idx + 1)
+        if parallel:
+            h = h.swapaxes(0, -2)
+        return h
+
+    @classmethod
+    def sequential(cls):
+        return Sequential
+    
+
 class GAT(torch.nn.Module):
     """Graph Attention Networks. https://arxiv.org/abs/1710.10903
 
@@ -107,7 +171,6 @@ class GAT(torch.nn.Module):
     @classmethod
     def sequential(cls):
         return Sequential
-    
 
     
 from dgl.nn import SGConv

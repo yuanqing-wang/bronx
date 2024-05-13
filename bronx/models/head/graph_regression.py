@@ -67,7 +67,7 @@ class GraphRegressionPyroHead(torch.nn.Module):
             y: Optional[torch.Tensor] = None,
         ):
         h_mu, h_log_sigma = h.chunk(2, dim=-1)
-        h_sigma = h_log_sigma.exp() + 1e-5
+        h_sigma = torch.nn.functional.softplus(h_log_sigma) + 1e-5
 
         with pyro.plate("nodes", g.batch_size):
             return pyro.sample(
