@@ -37,6 +37,7 @@ def run(args):
         consistency_temperature=args.consistency_temperature,
     )
 
+
     from lightning.pytorch.loggers import CSVLogger
     from lightning.pytorch.callbacks import ModelCheckpoint
     import lightning
