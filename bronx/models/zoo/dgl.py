@@ -55,7 +55,7 @@ class GCN(torch.nn.Module):
         return Sequential
     
 class BRONX(torch.nn.Module):
-    def __init__(self, in_feats, out_feats, depth=2):
+    def __init__(self, in_feats, out_feats, depth=6):
         super().__init__()
         self._in_feats, self._out_feats = in_feats, out_feats
         self.fc = torch.nn.Linear(in_feats, out_feats, bias=False)
