@@ -159,7 +159,9 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
     ):
         super().__init__(*args, **kwargs)
         # self.mask_log_sigma = pyro.nn.PyroParam(torch.tensor(-5.0))
-        self.mask_log_sigma = torch.nn.Parameter(torch.tensor(-5.0))
+        # self.mask_log_sigma = torch.nn.Parameter(torch.tensor(-5.0))
+        self.fc_mu = torch.nn.Linear(kwargs["in_features"], 1)
+        self.fc_log_sigma = torch.nn.Linear(kwargs["in_features"], 1)
 
     def forward(
             self,
@@ -171,12 +173,30 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
                 "mask",
                 pyro.distributions.Normal(
                     torch.zeros(g.number_of_nodes(), device=h.device),
-                    torch.ones(g.number_of_nodes(), device=h.device) * self.mask_log_sigma.exp(),
-                )# .to_event(1),
+                    torch.ones(g.number_of_nodes(), device=h.device),
+                )
             ).unsqueeze(-1)
-        h = h + mask
+        h = h * (1 + mask)
         return super().forward(g, h)
     
+    def custom_guide(
+            self,
+            g: dgl.DGLGraph,
+            h: torch.Tensor,
+    ):
+        mu = self.fc_mu(h).squeeze(-1)
+        log_sigma = self.fc_log_sigma(h).squeeze(-1)
+
+        with pyro.plate("mask_nodes", g.number_of_nodes()):
+            mask = pyro.sample(
+                "mask",
+                pyro.distributions.Normal(
+                    mu, log_sigma.exp()
+                )
+            ).unsqueeze(-1)
+        h = h * (1 + mask)
+        return super().forward(g, h)
+        
 class NodeModel(BronxPyroMixin, BronxLightningWrapper):
     def __init__(
             self, 
@@ -198,9 +218,11 @@ class NodeModel(BronxPyroMixin, BronxLightningWrapper):
         init_sigma(model, sigma)
         super().__init__(model)
 
-        self.model.guide = autoguide(
-            pyro.poutine.block(model, hide=["mask"]),
-        )
+        guides = pyro.infer.autoguide.guides.AutoGuideList(model)
+        guides.append(autoguide(model, hide=["mask"]))
+        guides.append(model.custom_guide)
+
+        self.model.guide = guides
 
         # initialize head
         self.head = head()
