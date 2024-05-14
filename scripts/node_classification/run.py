@@ -50,6 +50,10 @@ def run(args):
     #     save_on_train_epoch_end=True,
     # )
 
+    accelerator = "cpu"
+    if torch.cuda.is_available():
+        accelerator = "cuda"
+
     trainer = pl.Trainer(
         callbacks=[
             _TuneReportCallback(
@@ -58,7 +62,7 @@ def run(args):
             )
         ],
         max_epochs=args.num_epochs, 
-        accelerator="auto",
+        accelerator=accelerator,
         logger=CSVLogger("logs", name="structural"),
     )
     trainer.fit(model, data)
