@@ -203,7 +203,10 @@ class NodeModel(BronxPyroMixin, BronxLightningWrapper):
         )
 
         # initialize head
-        self.head = head()
+        self.head = head(
+            consistency_factor=kwargs.get("consistency_factor", 0.0),
+            consistency_temperature=kwargs.get("consistency_temperature", 1.0),
+        )
         self.automatic_optimization = False
         self.save_hyperparameters()
 

@@ -86,7 +86,7 @@ class NodeClassificationPyroHead(torch.nn.Module):
         super().__init__()
         self.consistency_temperature = consistency_temperature
         self.consistency_factor = consistency_factor
-
+        print(f"Consistency factor: {self.consistency_factor}")
         if self.consistency_factor > 0:
             self.regularizer = ConsistencyRegularizer(
                 temperature=self.consistency_temperature,
@@ -108,7 +108,7 @@ class NodeClassificationPyroHead(torch.nn.Module):
         else:
             number_of_nodes = g.number_of_nodes()
 
-        if self.consistency_factor > 0:
+        if self.consistency_factor > 0 and self.training:
             self.regularizer(h)
 
         # sample the logits
