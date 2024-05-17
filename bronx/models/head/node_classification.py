@@ -60,7 +60,7 @@ class NodeClassificationPyroSteps(object):
     @staticmethod
     def test_step(self, batch, batch_idx):
         """Validation step for the model."""
-        g, h, y, mask = batch
+        g = batch
         predictive = pyro.infer.Predictive(
             self.svi.model,
             guide=self.svi.guide,
@@ -68,11 +68,12 @@ class NodeClassificationPyroSteps(object):
             parallel=True,
             return_sites=["_RETURN"],
         )
-
-        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"].mean(0)[mask]
-        y = y[mask]
+        h = g.ndata["feat"]
+        y = g.ndata["label"]
+        y_hat = predictive(g, h, y=None, mask=None)["_RETURN"].mean(0)[g.ndata["test_mask"]]
+        y = y[g.ndata["test_mask"]]
         accuracy = (y_hat.argmax(-1) == y).float().mean()
-        self.log("test/accuracy", accuracy)
+        self.log("test/accuracy", accuracy, batch_size=1)
         return accuracy
 
 class NodeClassificationPyroHead(torch.nn.Module):
@@ -107,6 +108,8 @@ class NodeClassificationPyroHead(torch.nn.Module):
                 y = y[..., mask]
         else:
             number_of_nodes = g.number_of_nodes()
+        
+        h = h.softmax(-1)
 
         if self.consistency_factor > 0 and self.training:
             self.regularizer(h)
@@ -116,7 +119,7 @@ class NodeClassificationPyroHead(torch.nn.Module):
             with pyro.plate("obs_nodes", number_of_nodes):
                 return pyro.sample(
                     "y", 
-                    pyro.distributions.Categorical(logits=h),
+                    pyro.distributions.Categorical(probs=h),
                     obs=y,
                 )
         else:

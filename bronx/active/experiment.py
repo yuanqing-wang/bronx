@@ -8,6 +8,7 @@ def experiment(
         data,
         acquisition,
         num_steps,
+        num_epochs,
 ):
     best = random.randint(0, len(data))
     first = data.pop(best)
@@ -19,7 +20,7 @@ def experiment(
             dataset=portfolio,
             batch_size=len(portfolio),
         )
-        trainer = pl.Trainer(max_epochs=10)
+        trainer = pl.Trainer(max_epochs=num_epochs)
         trainer.fit(model, data_train)
         _, g, y = next(iter(data))
         scores = acquisition(model, g, g.ndata["h"], best=y_best)
@@ -28,34 +29,7 @@ def experiment(
         portfolio.append(best)
     return portfolio
 
-if __name__ == "__main__":
-    import pyro
-    from bronx.models import strategy
-    from bronx.models.head import graph_regression as heads
-    from bronx.models.zoo import dgl as zoo
-    from bronx.data.graph_regression import ESOL
-    from bronx.active.acquisition import expected_improvement, probability_of_improvement
-    data = ESOL()
-    data.setup()
-    model = strategy.NodeModel(
-        head=heads.GraphRegressionPyroHead,
-        layer=zoo.GCN,
-        in_features=data.in_features,
-        out_features=2,
-        hidden_features=16,
-        depth=2,
-        num_data=len(data.data_train),
-        autoguide=pyro.infer.autoguide.AutoDiagonalNormal,
-        aggregation=True,
-    )
 
-    data = [(s, g, y) for s, g, y in data.data_train]
-    portfolio = experiment(
-        model,
-        data,
-        acquisition=expected_improvement,
-        num_steps=10,
-    )
 
 
 

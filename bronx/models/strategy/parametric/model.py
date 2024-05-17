@@ -5,6 +5,7 @@ from .utils import init_sigma, to_pyro_module_
 from ...zoo.dgl import Sequential
 from ...model import BronxLightningWrapper, BronxModel, BronxPyroMixin
 from ....global_parameters import NUM_SAMPLES
+from ...head.node_classification import NodeClassificationPyroHead
 
 # class UnwrappedParametricModel(pyro.nn.PyroModule):
 class UnwrappedParametricModel(torch.nn.Module):
@@ -117,7 +118,13 @@ class ParametricModel(BronxPyroMixin, BronxLightningWrapper):
         self.model.guide = autoguide(model)
 
         # initialize head
-        self.head = head()
+        if isinstance(head, NodeClassificationPyroHead):
+            self.head = head(
+                consistency_factor=kwargs.get("consistency_factor", 0.0),
+                consistency_temperature=kwargs.get("consistency_temperature", 1.0),
+            )
+        else:
+            self.head = head()
         self.automatic_optimization = False
         self.save_hyperparameters()
 
@@ -172,6 +179,8 @@ class UnwrappedNodeModel(UnwrappedParametricModel):
                 torch.ones(g.number_of_nodes(), device=h.device),
             ).to_event(1),
         ).unsqueeze(-1)
+
+        print(h.shape, mask.shape, "shape")
         
         h = h * (1 + mask)
         return super().forward(g, h)
@@ -202,11 +211,13 @@ class NodeModel(BronxPyroMixin, BronxLightningWrapper):
             pyro.poutine.block(self.model, hide=["mask_nodes"]),
         )
 
-        # initialize head
-        self.head = head(
-            consistency_factor=kwargs.get("consistency_factor", 0.0),
-            consistency_temperature=kwargs.get("consistency_temperature", 1.0),
-        )
+        if isinstance(head, NodeClassificationPyroHead):
+            self.head = head(
+                consistency_factor=kwargs.get("consistency_factor", 0.0),
+                consistency_temperature=kwargs.get("consistency_temperature", 1.0),
+            )
+        else:
+            self.head = head()
         self.automatic_optimization = False
         self.save_hyperparameters()
 

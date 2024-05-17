@@ -8,6 +8,8 @@ from sklearn.model_selection import KFold
 
 _ALL = [
     "ESOL",
+    "FreeSolv",
+    "Lipophilicity",
 ]
 
 class GraphRegressionDataModule(pl.LightningDataModule):

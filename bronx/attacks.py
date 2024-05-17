@@ -32,9 +32,9 @@ def new_edges(
 
     """
     num_edges = int(g.number_of_edges() * percentage)
-    nodes = g.nodes()
-    src = torch.randint(0, nodes, (num_edges,))
-    dst = torch.randint(0, nodes, (num_edges,))
+    num_nodes = g.number_of_nodes()
+    src = torch.randint(0, num_nodes, (num_edges,))
+    dst = torch.randint(0, num_nodes, (num_edges,))
     g.add_edges(src, dst)
     return g
 
