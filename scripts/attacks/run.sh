@@ -8,6 +8,5 @@
 python run.py \
     --layer $LAYER \
     --data $DATA \
-    --strategy $STRATEGY \
-    --acquisition $ACQUISITION \
+    --strategy $STRATEGY
     

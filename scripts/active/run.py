@@ -32,7 +32,7 @@ def run(args):
         num_epochs=args.num_epochs,
     )
     scores = [y.item() for s, g, y in portfolio]
-    scores = np.maximum.accumulate(scores)
+    scores = np.maximum.accumulate(scores).tolist()
 
     df = pd.DataFrame(columns=["data", "strategy", "acquisition", "layer", "score"])
     df["data"] = [args.data]
