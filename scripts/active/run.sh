@@ -2,6 +2,7 @@
 #BSUB -o %J.stdout
 #BSUB -gpu "num=1:j_exclusive=yes"
 #BSUB -R "rusage[mem=10] span[ptile=1]"
+#BSUB -R "hname != lt14"
 #BSUB -W 12:00
 #BSUB -n 1
 
@@ -10,4 +11,3 @@ python run.py \
     --data $DATA \
     --strategy $STRATEGY \
     --acquisition $ACQUISITION \
-    

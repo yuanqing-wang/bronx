@@ -168,7 +168,7 @@ cython_debug/
 
 *.json
 *.pkl
-*.csv
+# *.csv
 *.tfevents*
 *.validate_storage_marker
 *checkpoint
