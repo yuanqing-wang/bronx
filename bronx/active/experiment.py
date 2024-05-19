@@ -24,7 +24,7 @@ def experiment(
         trainer = pl.Trainer(
             max_epochs=num_epochs, logger=False,
             default_root_dir=os.path.join(
-                os.getcwd(), str(os.environ.get("SLURM_JOB_ID")),
+                os.getcwd(), "checkpoints", str(os.environ.get("LSB_JOBID")),
             )
         )
         trainer.fit(model, data_train)
